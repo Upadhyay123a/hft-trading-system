@@ -111,13 +111,13 @@ public class MarketMakingStrategy implements Strategy {
     @Override
     public void onTrade(Trade trade) {
         // Update position
-        if (trade.buyOrderId.equals(activeBuyOrderId)) {
+        if (trade.buyOrderId == activeBuyOrderId) {
             currentPosition += trade.quantity;
             activeBuyOrderId = null; // Can place new order
             logger.debug("Buy filled: qty={}, pos={}", trade.quantity, currentPosition);
         }
         
-        if (trade.sellOrderId.equals(activeSellOrderId)) {
+        if (trade.sellOrderId == activeSellOrderId) {
             currentPosition -= trade.quantity;
             activeSellOrderId = null; // Can place new order
             logger.debug("Sell filled: qty={}, pos={}", trade.quantity, currentPosition);
@@ -125,7 +125,7 @@ public class MarketMakingStrategy implements Strategy {
         
         // Calculate realized P&L (simplified)
         double tradeValue = trade.getPriceAsDouble() * trade.quantity;
-        if (trade.buyOrderId.equals(activeBuyOrderId)) {
+        if (trade.buyOrderId == activeBuyOrderId) {
             totalPnL -= tradeValue; // Paid for long
         } else {
             totalPnL += tradeValue; // Received for short

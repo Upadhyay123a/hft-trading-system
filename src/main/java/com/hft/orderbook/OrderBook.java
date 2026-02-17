@@ -167,7 +167,7 @@ public class OrderBook {
             }
         }
         
-        order.status = order.getRemainingQuantity() == 0 ? 2 : 1;
+        order.status = (byte)(order.getRemainingQuantity() == 0 ? 2 : 1);
         return trades;
     }
     
