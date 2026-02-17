@@ -20,12 +20,13 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 
 /**
  * Real Binance API Integration with Authentication
  * Supports both market data WebSocket and private REST API endpoints
  */
-public class BinanceRealApi {
+public class BinanceRealApi implements MultiExchangeManager.ExchangeApi {
     private static final Logger logger = LoggerFactory.getLogger(BinanceRealApi.class);
     
     // API endpoints
@@ -149,8 +150,9 @@ public class BinanceRealApi {
     /**
      * Place real order on Binance
      */
-    public CompletableFuture<OrderResult> placeOrder(Order order) {
-        return CompletableFuture.supplyAsync(() -> {
+    @Override
+    public CompletableFuture<MultiExchangeManager.OrderResult> placeOrder(Order order) {
+        return CompletableFuture.<MultiExchangeManager.OrderResult>supplyAsync(() -> {
             try (var measurement = performanceMonitor.startMeasurement("binance_order_place")) {
                 
                 checkRateLimit();
@@ -178,7 +180,7 @@ public class BinanceRealApi {
                 
                 if (response.statusCode() == 200) {
                     JsonObject result = gson.fromJson(response.body(), JsonObject.class);
-                    OrderResult orderResult = parseOrderResult(result);
+                    MultiExchangeManager.OrderResult orderResult = parseOrderResult(result);
                     
                     // Track order status
                     orderStatuses.put(order.orderId, new OrderStatus(order.orderId, orderResult));
@@ -190,13 +192,15 @@ public class BinanceRealApi {
                 } else {
                     logger.error("Order placement failed: {} - {}", response.statusCode(), response.body());
                     performanceMonitor.incrementCounter("order_place_failed");
-                    return new OrderResult(order.orderId, "FAILED", response.body(), 0, 0, 0);
+                    return new MultiExchangeManager.OrderResult(
+                    String.valueOf(order.orderId), "FAILED", response.body(), 0.0, 0.0, 0.0);
                 }
                 
             } catch (Exception e) {
                 logger.error("Error placing order", e);
                 performanceMonitor.incrementCounter("order_place_error");
-                return new OrderResult(order.orderId, "ERROR", e.getMessage(), 0, 0, 0);
+                return new MultiExchangeManager.OrderResult(
+                        String.valueOf(order.orderId), "ERROR", e.getMessage(), 0.0, 0.0, 0.0);
             }
         });
     }
@@ -204,6 +208,7 @@ public class BinanceRealApi {
     /**
      * Cancel order
      */
+    @Override
     public CompletableFuture<Boolean> cancelOrder(long orderId, String symbol) {
         return CompletableFuture.supplyAsync(() -> {
             try {
@@ -246,7 +251,8 @@ public class BinanceRealApi {
     /**
      * Get account information
      */
-    public CompletableFuture<AccountInfo> getAccountInfo() {
+    @Override
+    public CompletableFuture<Object> getAccountInfo() {
         return CompletableFuture.supplyAsync(() -> {
             try (var measurement = performanceMonitor.startMeasurement("binance_account_info")) {
                 checkRateLimit();
@@ -325,9 +331,9 @@ public class BinanceRealApi {
     /**
      * Parse order result from API response
      */
-    private OrderResult parseOrderResult(JsonObject result) {
-        return new OrderResult(
-            result.get("orderId").getAsLong(),
+    private MultiExchangeManager.OrderResult parseOrderResult(JsonObject result) {
+        return new MultiExchangeManager.OrderResult(
+            String.valueOf(result.get("orderId").getAsLong()),
             result.get("status").getAsString(),
             result.get("clientOrderId").getAsString(),
             result.get("executedQty").getAsDouble(),
@@ -369,13 +375,16 @@ public class BinanceRealApi {
             } catch (Exception e) {
                 logger.error("Error processing market data message", e);
             }
-            webSocket.request(1); // Request next message
+            if (last) {
+                webSocket.request(1); // Request next message
+            }
             return null;
         }
         
         @Override
-        public void onClose(WebSocket webSocket, int statusCode, String reason) {
+        public CompletionStage<?> onClose(WebSocket webSocket, int statusCode, String reason) {
             logger.info("Binance market data WebSocket closed: {} - {}", statusCode, reason);
+            return null;
         }
         
         @Override
@@ -402,13 +411,16 @@ public class BinanceRealApi {
             } catch (Exception e) {
                 logger.error("Error processing user data message", e);
             }
-            webSocket.request(1);
+            if (last) {
+                webSocket.request(1);
+            }
             return null;
         }
         
         @Override
-        public void onClose(WebSocket webSocket, int statusCode, String reason) {
+        public CompletionStage<?> onClose(WebSocket webSocket, int statusCode, String reason) {
             logger.info("Binance user data WebSocket closed: {} - {}", statusCode, reason);
+            return null;
         }
         
         @Override
@@ -476,25 +488,6 @@ public class BinanceRealApi {
     }
     
     // Data classes
-    public static class OrderResult {
-        public final long orderId;
-        public final String status;
-        public final String clientOrderId;
-        public final double executedQty;
-        public final double cumulativeQuoteQty;
-        public final double price;
-        
-        public OrderResult(long orderId, String status, String clientOrderId, 
-                         double executedQty, double cumulativeQuoteQty, double price) {
-            this.orderId = orderId;
-            this.status = status;
-            this.clientOrderId = clientOrderId;
-            this.executedQty = executedQty;
-            this.cumulativeQuoteQty = cumulativeQuoteQty;
-            this.price = price;
-        }
-    }
-    
     public static class AccountInfo {
         public final String status;
         public final String message;
@@ -538,7 +531,7 @@ public class BinanceRealApi {
         public volatile String status;
         public volatile long updateTime;
         
-        public OrderStatus(long orderId, OrderResult result) {
+        public OrderStatus(long orderId, MultiExchangeManager.OrderResult result) {
             this.orderId = orderId;
             this.status = result.status;
             this.updateTime = System.currentTimeMillis();

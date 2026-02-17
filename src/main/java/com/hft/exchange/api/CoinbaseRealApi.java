@@ -17,6 +17,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -24,7 +25,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * Real Coinbase API Integration with Authentication
  * Supports both market data WebSocket and private REST API endpoints
  */
-public class CoinbaseRealApi {
+public class CoinbaseRealApi implements MultiExchangeManager.ExchangeApi {
     private static final Logger logger = LoggerFactory.getLogger(CoinbaseRealApi.class);
     
     // API endpoints
@@ -71,8 +72,8 @@ public class CoinbaseRealApi {
                 // Build subscription message
                 JsonObject subscribeMessage = new JsonObject();
                 subscribeMessage.addProperty("type", "subscribe");
-                subscribeMessage.addProperty("product_ids", gson.toJsonTree(symbols));
-                subscribeMessage.addProperty("channels", gson.toJsonTree(Arrays.asList("level2", "trades")));
+                subscribeMessage.add("product_ids", gson.toJsonTree(symbols));
+                subscribeMessage.add("channels", gson.toJsonTree(Arrays.asList("level2", "trades")));
                 
                 WebSocket ws = HttpClient.newHttpClient()
                     .newWebSocketBuilder()
@@ -94,7 +95,8 @@ public class CoinbaseRealApi {
     /**
      * Place real order on Coinbase
      */
-    public CompletableFuture<OrderResult> placeOrder(Order order) {
+    @Override
+    public CompletableFuture placeOrder(Order order) {
         return CompletableFuture.supplyAsync(() -> {
             try (var measurement = performanceMonitor.startMeasurement("coinbase_order_place")) {
                 
@@ -142,13 +144,13 @@ public class CoinbaseRealApi {
                 } else {
                     logger.error("Coinbase order placement failed: {} - {}", response.statusCode(), response.body());
                     performanceMonitor.incrementCounter("coinbase_order_place_failed");
-                    return new OrderResult("", "FAILED", response.body(), 0, 0, 0);
+                    return new MultiExchangeManager.OrderResult("", "FAILED", response.body(), 0, 0, 0);
                 }
                 
             } catch (Exception e) {
                 logger.error("Error placing Coinbase order", e);
                 performanceMonitor.incrementCounter("coinbase_order_place_error");
-                return new OrderResult("", "ERROR", e.getMessage(), 0, 0, 0);
+                return new MultiExchangeManager.OrderResult("", "ERROR", e.getMessage(), 0, 0, 0);
             }
         });
     }
@@ -156,14 +158,15 @@ public class CoinbaseRealApi {
     /**
      * Cancel order on Coinbase
      */
-    public CompletableFuture<Boolean> cancelOrder(String clientOrderId) {
+    @Override
+    public CompletableFuture<Boolean> cancelOrder(long orderId, String symbol) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 checkRateLimit();
                 
                 String timestamp = String.valueOf(Instant.now().getEpochSecond());
                 String method = "DELETE";
-                String path = "/orders/" + clientOrderId;
+                String path = "/orders/" + orderId;
                 String message = timestamp + method + path;
                 String signature = apiKeyManager.generateSignature("coinbase", message);
                 
@@ -179,7 +182,7 @@ public class CoinbaseRealApi {
                 HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
                 
                 if (response.statusCode() == 200) {
-                    logger.info("Coinbase order cancelled successfully: {}", clientOrderId);
+                    logger.info("Coinbase order cancelled successfully: {}", orderId);
                     performanceMonitor.recordThroughput("coinbase_orders_cancelled", 1);
                     return true;
                 } else {
@@ -199,7 +202,8 @@ public class CoinbaseRealApi {
     /**
      * Get account information
      */
-    public CompletableFuture<AccountInfo> getAccountInfo() {
+    @Override
+    public CompletableFuture<Object> getAccountInfo() {
         return CompletableFuture.supplyAsync(() -> {
             try (var measurement = performanceMonitor.startMeasurement("coinbase_account_info")) {
                 checkRateLimit();
@@ -340,13 +344,16 @@ public class CoinbaseRealApi {
             } catch (Exception e) {
                 logger.error("Error processing Coinbase market data message", e);
             }
-            webSocket.request(1);
+            if (last) {
+                webSocket.request(1);
+            }
             return null;
         }
         
         @Override
-        public void onClose(WebSocket webSocket, int statusCode, String reason) {
+        public CompletionStage<?> onClose(WebSocket webSocket, int statusCode, String reason) {
             logger.info("Coinbase market data WebSocket closed: {} - {}", statusCode, reason);
+            return null;
         }
         
         @Override

@@ -55,7 +55,7 @@ public class MultiExchangeManager {
         
         // Initialize Binance if configured
         if (apiKeyManager.isExchangeConfigured("binance")) {
-            BinanceRealApi binance = new BinanceRealApi();
+            ExchangeApi binance = new BinanceRealApi();
             exchanges.put("binance", binance);
             exchangeStatuses.put("binance", new ExchangeStatus("binance", true));
             logger.info("Initialized Binance API");
@@ -63,7 +63,7 @@ public class MultiExchangeManager {
         
         // Initialize Coinbase if configured
         if (apiKeyManager.isExchangeConfigured("coinbase")) {
-            CoinbaseRealApi coinbase = new CoinbaseRealApi();
+            ExchangeApi coinbase = new CoinbaseRealApi();
             exchanges.put("coinbase", coinbase);
             exchangeStatuses.put("coinbase", new ExchangeStatus("coinbase", true));
             logger.info("Initialized Coinbase API");
@@ -177,14 +177,15 @@ public class MultiExchangeManager {
                 logger.info("Order placed on {}: {}", exchangeName, result.status);
                 return result;
             })
-            .exceptionally(throwable -> {
+            .exceptionallyCompose(throwable -> {
                 performanceMonitor.incrementCounter("order_failed_" + exchangeName);
                 logger.error("Order placement failed on {}", exchangeName, throwable);
                 
                 if (enableFailover && attempt < maxRetries) {
                     return placeOrderOnFailoverExchange(order, exchangeName, attempt);
                 } else {
-                    throw new RuntimeException("Order placement failed after " + (attempt + 1) + " attempts", throwable);
+                    return CompletableFuture.failedFuture(
+                        new RuntimeException("Order placement failed after " + (attempt + 1) + " attempts", throwable));
                 }
             });
     }
@@ -312,7 +313,7 @@ public class MultiExchangeManager {
             Map<String, Double> exchangeMetrics = new HashMap<>();
             
             // Add exchange-specific metrics
-            exchangeMetrics.put(1.0, 1.0); // Placeholder for actual metrics
+            exchangeMetrics.put("metric1", 1.0); // Placeholder for actual metrics
             
             metrics.put(exchange, exchangeMetrics);
         }
@@ -341,9 +342,18 @@ public class MultiExchangeManager {
             
             CompletableFuture<Boolean> healthCheck = exchange.getAccountInfo()
                 .thenApply(info -> {
-                    boolean healthy = !"ERROR".equals(info.status);
-                    exchangeStatuses.get(exchangeName).healthy = healthy;
-                    return healthy;
+                    try {
+                        // Use reflection to get status field safely for any AccountInfo type
+                        java.lang.reflect.Field statusField = info.getClass().getField("status");
+                        String status = (String) statusField.get(info);
+                        boolean healthy = !"ERROR".equals(status);
+                        exchangeStatuses.get(exchangeName).healthy = healthy;
+                        return healthy;
+                    } catch (Exception e) {
+                        logger.error("Error accessing account info status for {}", exchangeName, e);
+                        exchangeStatuses.get(exchangeName).healthy = false;
+                        return false;
+                    }
                 })
                 .exceptionally(throwable -> {
                     exchangeStatuses.get(exchangeName).healthy = false;
