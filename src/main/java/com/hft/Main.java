@@ -3,6 +3,7 @@ package com.hft;
 import com.hft.core.SymbolMapper;
 import com.hft.core.TradingEngine;
 import com.hft.core.HighThroughputEngine;
+import com.hft.core.RealTradingEngine;
 import com.hft.exchange.BinanceConnector;
 import com.ft.risk.RiskManager;
 import com.hft.strategy.MarketMakingStrategy;
@@ -57,14 +58,44 @@ public class Main {
         Strategy strategy = chooseStrategy();
         
         // Choose engine type
-        boolean useHighThroughput = chooseEngineType();
+        int engineChoice = chooseEngineType();
         
         // Configure risk management
         RiskManager.RiskConfig riskConfig = RiskManager.RiskConfig.moderate();
         RiskManager riskManager = new RiskManager(riskConfig);
         
         // Create and start trading engine
-        if (useHighThroughput) {
+        if (engineChoice == 3) {
+            // Real Trading Engine
+            RealTradingEngine.EngineConfig engineConfig = RealTradingEngine.EngineConfig.defaultConfig();
+            RealTradingEngine engine = new RealTradingEngine(strategy, riskManager, engineConfig, symbols);
+            
+            logger.info("Starting REAL trading engine with actual exchange APIs...");
+            engine.start().thenRun(() -> {
+                logger.info("Real trading engine started successfully");
+                
+                // Wait for user input to stop
+                logger.info("\nPress ENTER to stop trading...\n");
+                Scanner scanner = new Scanner(System.in);
+                scanner.nextLine();
+                
+                // Shutdown
+                logger.info("Shutting down real trading engine...");
+                engine.stop();
+                
+                logger.info("=== Final Statistics ===");
+                logger.info("Strategy: {}", strategy.getName());
+                logger.info("Total P&L: ${}", String.format("%.2f", engine.getTotalPnL()));
+                logger.info("Orders Placed: {}", engine.getOrdersPlaced());
+                logger.info("Orders Filled: {}", engine.getOrdersFilled());
+                logger.info("========================");
+                logger.info("Real trading stopped. Goodbye!");
+            }).exceptionally(throwable -> {
+                logger.error("Failed to start real trading engine", throwable);
+                return null;
+            });
+            
+        } else if (engineChoice == 2) {
             HighThroughputEngine.EngineConfig engineConfig = HighThroughputEngine.EngineConfig.highThroughput();
             HighThroughputEngine engine = new HighThroughputEngine(connector, strategy, riskManager, engineConfig);
             
@@ -112,13 +143,14 @@ public class Main {
         logger.info("Shutdown complete. Goodbye!");
     }
     
-    private static boolean chooseEngineType() {
+    private static int chooseEngineType() {
         Scanner scanner = new Scanner(System.in);
         
         System.out.println("\nChoose Trading Engine:");
-        System.out.println("1. Standard Engine (single-threaded, low resource usage)");
-        System.out.println("2. High-Throughput Engine (multi-threaded, maximum performance)");
-        System.out.print("Enter choice (1-2): ");
+        System.out.println("1. Standard Engine (single-threaded, simulation only)");
+        System.out.println("2. High-Throughput Engine (multi-threaded, simulation only)");
+        System.out.println("3. Real Trading Engine (actual exchange trading - requires API keys)");
+        System.out.print("Enter choice (1-3): ");
         
         int choice = 1;
         try {
@@ -127,7 +159,7 @@ public class Main {
             // Default to standard engine
         }
         
-        return choice == 2;
+        return choice;
     }
     
     private static Strategy chooseStrategy() {
