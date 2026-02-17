@@ -3,7 +3,7 @@ package com.hft.core;
 import com.hft.exchange.BinanceConnector;
 import com.hft.monitoring.PerformanceMonitor;
 import com.hft.orderbook.OrderBook;
-import com.hft.risk.RiskManager;
+import com.ft.risk.RiskManager;
 import com.hft.strategy.Strategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

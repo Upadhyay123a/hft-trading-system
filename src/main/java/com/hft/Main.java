@@ -4,7 +4,7 @@ import com.hft.core.SymbolMapper;
 import com.hft.core.TradingEngine;
 import com.hft.core.HighThroughputEngine;
 import com.hft.exchange.BinanceConnector;
-import com.hft.risk.RiskManager;
+import com.ft.risk.RiskManager;
 import com.hft.strategy.MarketMakingStrategy;
 import com.hft.strategy.MomentumStrategy;
 import com.hft.strategy.StatisticalArbitrageStrategy;
