@@ -216,20 +216,362 @@ Sharpe Ratio:       1.234
 - **P&L**: $0.00 (no trades in test environment)
 - **Risk Management**: All risk checks passing
 - **Position Tracking**: Working correctly
-
 #### Exchange Connectivity
 - **Binance API**: Initialized (401 error due to invalid test credentials)
 - **Coinbase API**: Initialized (500 error due to test environment)
 - **Multi-Exchange Manager**: Smart routing and failover configured
-- **Health Monitoring**: Exchange status tracking functional
+- **Health Monitoring**: Exchange status tracking
 
-### 🎯 Test Results Summary
+## 📚 Trading Strategies - Mathematical Concepts & Examples
+
+### 🎯 1. Market Making Strategy
+
+#### **Concept**
+Market Making provides liquidity by placing simultaneous buy and sell orders around the current mid-price, profiting from the bid-ask spread.
+
+#### **Mathematical Foundation**
+
+**Mid-Price Calculation:**
+```
+MidPrice = (BestBid + BestAsk) / 2
+```
+
+**Quote Prices:**
+```
+BidPrice = MidPrice - (Spread / 2)
+AskPrice = MidPrice + (Spread / 2)
+```
+
+**Profit per Trade:**
+```
+Profit = (AskPrice - BidPrice) × OrderSize
+       = Spread × OrderSize
+```
+
+#### **Implementation Example**
+```java
+// Current market: Best Bid = $49,990, Best Ask = $50,010
+MidPrice = (49,990 + 50,010) / 2 = $50,000
+
+// With 0.02% spread (10 ticks)
+SpreadTicks = 0.02% × 10,000 = 200 ticks = $0.02
+BidPrice = 50,000 - 100 = $49,900
+AskPrice = 50,000 + 100 = $50,100
+
+// Profit when both orders fill
+Profit = ($50,100 - $49,900) × 1 BTC = $200
+```
+
+#### **Key Parameters**
+- **Spread**: 0.02% (2 basis points) - distance from mid-price
+- **Order Size**: 1 BTC - quantity per order
+- **Max Position**: 5 BTC - maximum inventory exposure
+- **Quote Interval**: 100ms - minimum time between quote updates
+
+#### **Risk Management**
+```java
+// Position limits prevent inventory buildup
+if (currentPosition < maxPosition) placeBuyOrder();
+if (currentPosition > -maxPosition) placeSellOrder();
+```
+
+---
+
+### 🚀 2. Momentum Strategy
+
+#### **Concept**
+Momentum trading follows price trends - buying when prices are rising and selling when falling, based on the principle that trends tend to persist.
+
+#### **Mathematical Foundation**
+
+**Price Change Calculation:**
+```
+PriceChange = ((CurrentPrice - OldestPrice) / OldestPrice) × 100%
+```
+
+**Momentum Signal:**
+```
+Signal = {
+    BUY  if PriceChange > +Threshold
+    SELL if PriceChange < -Threshold
+    HOLD otherwise
+}
+```
+
+**Rate Limiting:**
+```
+TimeSinceLastTrade = CurrentTime - LastTradeTime
+if (TimeSinceLastTrade < MinInterval) return HOLD
+```
+
+#### **Implementation Example**
+```java
+// Price history over 20 ticks
+Prices = [49,800, 49,850, 49,900, 50,000, 50,100, 50,200]
+
+// Calculate momentum
+OldPrice = 49,800 (20 ticks ago)
+NewPrice = 50,200 (current)
+PriceChange = ((50,200 - 49,800) / 49,800) × 100% = 0.80%
+
+// With 0.05% threshold
+if (0.80% > 0.05%) → BUY signal
+```
+
+#### **Key Parameters**
+- **Lookback Period**: 20 ticks - historical window for momentum calculation
+- **Threshold**: 0.05% - minimum price change to trigger trade
+- **Order Size**: 1 BTC - quantity per trade
+- **Max Position**: 10 BTC - maximum position size
+- **Min Trade Interval**: 1 second - prevents overtrading
+
+#### **Risk Management**
+```java
+// Position limits and rate limiting
+if (priceChange > threshold && currentPosition < maxPosition) {
+    placeBuyOrder();
+    lastTradeTime = System.nanoTime();
+}
+```
+
+---
+
+### 📊 3. Statistical Arbitrage Strategy
+
+#### **Concept**
+Statistical arbitrage exploits mean reversion and cointegration relationships between multiple assets, trading temporary price divergences that historically revert to the mean.
+
+#### **Mathematical Foundation**
+
+**Linear Regression for Hedge Ratios:**
+```
+Y = β₀ + β₁X₁ + β₂X₂ + ... + ε
+```
+Where Y is the base asset, X₁, X₂ are hedge assets, β are hedge ratios.
+
+**Spread Calculation:**
+```
+Spread = Y - (β₁X₁ + β₂X₂ + ...)
+```
+
+**Z-Score for Signal Generation:**
+```
+ZScore = (CurrentSpread - MeanSpread) / StandardDeviation
+```
+
+**Trading Signal:**
+```
+Signal = {
+    LONG_SPREAD  if ZScore < -Threshold
+    SHORT_SPREAD if ZScore > +Threshold
+}
+```
+
+#### **Implementation Example**
+```java
+// BTC/ETH pair trading
+// Regression result: ETH = 0.05 × BTC + 1000
+HedgeRatio = 0.05
+
+// Current prices: BTC = $50,000, ETH = $3,500
+ExpectedETH = 0.05 × 50,000 + 1000 = $3,500
+ActualETH = $3,450
+Spread = $3,500 - $3,450 = $50
+
+// Historical spread statistics
+MeanSpread = $0
+StdDevSpread = $25
+
+// Calculate Z-score
+ZScore = ($50 - $0) / $25 = 2.0
+
+// With threshold of 2.0
+if (ZScore > 2.0) → SHORT_SPREAD signal
+// Strategy: Sell ETH, Buy BTC (hedge ratio)
+```
+
+#### **Hedge Ratio Calculation**
+```java
+// Using Ordinary Least Squares (OLS)
+double[][] x = new double[lookbackPeriod][symbols.length - 1];
+double[] y = new double[lookbackPeriod];
+
+// Fill with historical prices
+OLSMultipleLinearRegression regression = new OLSMultipleLinearRegression();
+regression.newSampleData(y, x);
+hedgeRatios = regression.estimateRegressionParameters();
+```
+
+#### **Key Parameters**
+- **Symbols**: [BTC/USDT, ETH/USDT] - trading pair
+- **Lookback Period**: 1000 ticks - historical data window
+- **Z-Score Threshold**: 2.0 - statistical significance level
+- **Min Spread**: 0.1% - minimum profit requirement
+- **Order Size**: 1 unit - base order quantity
+
+#### **Risk Management**
+```java
+// Position sizing based on hedge ratios
+int hedgeSize = (int)(orderSize * hedgeRatios[i]);
+
+// Only one active position at a time
+if (activePosition != null && !activePosition.isComplete()) {
+    return; // Wait for current position to complete
+}
+```
+
+---
+
+### 🔺 4. Triangular Arbitrage Strategy
+
+#### **Concept**
+Triangular arbitrage exploits price inefficiencies across three currency pairs, executing simultaneous trades to profit from mispricings in the triangular relationship.
+
+#### **Mathematical Foundation**
+
+**Implied Cross Rate:**
+```
+ImpliedCrossRate = QuotePairPrice / BasePairPrice
+```
+
+**Arbitrage Profit Calculation:**
+```
+// Direction 1: USDT → BTC → ETH → USDT
+Profit1 = ((OrderSize / BasePrice) / CrossPrice) × QuotePrice - OrderSize
+
+// Direction 2: USDT → ETH → BTC → USDT  
+Profit2 = ((OrderSize / QuotePrice) × CrossPrice) × BasePrice - OrderSize
+```
+
+**Profit Percentage:**
+```
+ProfitPercent = Profit / OrderSize × 100%
+```
+
+#### **Implementation Example**
+```java
+// Current market prices:
+// BTC/USDT = $50,000
+// ETH/USDT = $3,500
+// ETH/BTC = 0.07
+
+// Calculate implied cross rate
+ImpliedETH_BTC = $3,500 / $50,000 = 0.07
+
+// Check for arbitrage opportunities
+// Direction 1: USDT → BTC → ETH → USDT
+StartAmount = $10,000
+BTC = $10,000 / $50,000 = 0.2 BTC
+ETH = 0.2 / 0.07 = 2.857 ETH
+FinalUSDT = 2.857 × $3,500 = $10,000
+Profit1 = $10,000 - $10,000 = $0
+
+// If ETH/BTC is mispriced at 0.069:
+ETH = 0.2 / 0.069 = 2.899 ETH
+FinalUSDT = 2.899 × $3,500 = $10,147
+Profit = $147 (1.47% arbitrage)
+```
+
+#### **Order Execution Logic**
+```java
+// Direction 1: Buy BTC → Sell BTC for ETH → Sell ETH for USDT
+Order1: Buy BTC with USDT (market order)
+Order2: Sell BTC for ETH (market order) 
+Order3: Sell ETH for USDT (market order)
+
+// Calculate quantities:
+BTC_Amount = OrderSize / BTC_USDT_Price
+ETH_Amount = BTC_Amount / ETH_BTC_Price
+USDT_Final = ETH_Amount * ETH_USDT_Price
+```
+
+#### **Key Parameters**
+- **Base Pair**: BTC/USDT - primary trading pair
+- **Quote Pair**: ETH/USDT - secondary trading pair  
+- **Cross Pair**: ETH/BTC - cross-currency pair
+- **Min Profit Threshold**: 0.1% - minimum arbitrage profit
+- **Order Size**: $10,000 USDT - base trading amount
+- **Max Slippage**: 0.2% - maximum acceptable price impact
+
+#### **Risk Management**
+```java
+// Check data freshness
+long now = System.currentTimeMillis();
+if ((now - lastUpdateTime[pair]) > staleThreshold) {
+    return; // Wait for fresh data
+}
+
+// Only one arbitrage position at a time
+if (activePosition != null && !activePosition.isComplete()) {
+    return; // Wait for completion
+}
+```
+
+---
+
+### 📈 Strategy Performance Comparison
+
+| Strategy | Type | Profit Source | Risk Level | Required Data | Execution Speed |
+|----------|------|---------------|-----------|--------------|----------------|
+| **Market Making** | Market Neutral | Bid-Ask Spread | Low | Order Book | Ultra-Fast |
+| **Momentum** | Directional | Price Trends | Medium | Price History | Fast |
+| **Statistical Arbitrage** | Market Neutral | Mean Reversion | Medium | Multiple Assets | Medium |
+| **Triangular Arbitrage** | Market Neutral | Price Inefficiency | High | Three Pairs | Fast |
+
+### 🎯 Strategy Selection Guide
+
+#### **Market Making** - Best for:
+- High-volume, low-volatility markets
+- When you have inventory advantages
+- Stable market conditions
+- **Example**: BTC/USDT during normal trading hours
+
+#### **Momentum** - Best for:
+- Trending markets with clear direction
+- High volatility environments
+- When you can tolerate directional risk
+- **Example**: Crypto bull/bear markets
+
+#### **Statistical Arbitrage** - Best for:
+- Markets with cointegrated assets
+- Mean-reverting price relationships
+- When you have sophisticated statistical models
+- **Example**: BTC/ETH pair trading
+
+#### **Triangular Arbitrage** - Best for:
+- Markets with multiple trading pairs
+- High-frequency price inefficiencies
+- When you have ultra-low latency
+- **Example**: Cross-currency arbitrage opportunities
+
+### 🔬 Advanced Mathematical Concepts
+
+#### **Kelly Criterion for Position Sizing**
+```
+PositionSize = (WinRate × WinProfit - LossRate × LossRisk) / WinProfit
+```
+
+#### **Sharpe Ratio for Performance**
+```
+SharpeRatio = (AnnualReturn - RiskFreeRate) / AnnualVolatility
+```
+
+#### **Maximum Drawdown**
+```
+MaxDrawdown = (PeakEquity - LowestEquity) / PeakEquity × 100%
+```
+
+#### **Value at Risk (VaR)**
+```
+VaR = PortfolioValue × ZScore × Volatility × √TimeHorizon
+```
+
+These mathematical foundations ensure that each strategy operates on sound quantitative principles, optimizing risk-adjusted returns while maintaining strict risk management controls. Summary
 
 | Component | Status | Details |
 |-----------|--------|---------|
 | **API Key Manager** | ✅ PASS | Singleton pattern, signature generation, exchange configuration |
 | **Order Book** | ✅ PASS | Limit orders, market execution, 1 trade executed |
-| **Trading Strategies** | ✅ PASS | All 4 strategies initialized, 0 orders (no liquidity) |
 | **Performance Monitor** | ✅ PASS | Latency tracking, throughput monitoring, custom metrics |
 | **Risk Manager** | ✅ PASS | Position limits, P&L tracking, risk checks |
 | **Exchange APIs** | ✅ PASS | APIs initialized (expected auth errors in test) |
