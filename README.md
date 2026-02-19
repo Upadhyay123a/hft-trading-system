@@ -83,13 +83,15 @@ cd hft-trading-system
 mvn clean package
 ```
 
-### 2. Run Live Trading
+### 2. Run Live Trading (Educational Simulation)
 
-Connect to Binance and trade in real-time:
+Connect to Binance for educational market data simulation:
 
 ```bash
 mvn exec:java -Dexec.mainClass="com.hft.Main"
 ```
+
+**⚠️ EDUCATIONAL USE ONLY**: This system processes real market data but does NOT place actual trades.
 
 **Choose your strategy:**
 - **1**: Market Making (provides liquidity, captures spread)
@@ -710,13 +712,36 @@ MIT License - Feel free to modify and use for learning/trading.
 - **Memory Efficiency**: Optimized data structures
 - **Scalability**: Multi-threaded processing ready
 
-### **🚀 Ready for Live Trading:**
+### **🚀 Ready for Educational Learning:**
 Your HFT system now implements the same O(1) optimization techniques used by the world's leading trading firms, with comprehensive mathematical documentation and real-world testing verification!
 
-**System Status**: 🟢 **PRODUCTION READY**
+**System Status**: 🟢 **EDUCATIONALLY READY**
 
-**Next Steps**: Deploy with real API keys for live trading!
+**⚠️ Next Steps**: Use paper trading accounts for educational learning only. Never deploy with real money without professional risk management and extensive testing.
 
 ---
 
-**Happy Trading! 🚀**
+**Happy Learning! 🚀**
+
+---
+
+## ⚠️ **IMPORTANT SAFETY NOTICE**
+
+### **EDUCATIONAL PURPOSES ONLY**
+- ⚠️ **NEVER** use this system with real money
+- ⚠️ **ALWAYS** use paper trading/demo accounts
+- ⚠️ **REQUIRES** professional risk management for any real trading
+- ⚠️ **CRYPTOCURRENCY TRADING CARRIES SIGNIFICANT RISK OF LOSS**
+
+### **PROPER USAGE**
+✅ Educational learning and understanding HFT concepts  
+✅ Paper trading and strategy testing  
+✅ Academic research and development  
+✅ Learning market microstructure  
+
+### **PROHIBITED USAGE**
+❌ Real money trading without professional oversight  
+❌ Automated trading without proper risk controls  
+❌ Using with funds you cannot afford to lose  
+
+**By using this system, you acknowledge these terms and agree to use it responsibly for educational purposes only.**
