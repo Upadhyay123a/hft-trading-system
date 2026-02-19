@@ -27,7 +27,7 @@ public class OptimizedOrderBook {
     private static final long BASE_PRICE = 100000000L; // $10,000 base
     private static final long MAX_PRICE = 250000000L;  // $25,000 max
     private static final long MIN_PRICE = 50000L;     // $50 min
-    private static final int PRICE_TICK = 100L;        // $0.01 granularity
+    private static final int PRICE_TICK = 100;        // $0.01 granularity
     private static final int PRICE_LEVELS = (int)(((MAX_PRICE - MIN_PRICE) / PRICE_TICK) + 1);
     
     // Array-based price levels - O(1) access
@@ -269,7 +269,7 @@ public class OptimizedOrderBook {
         trade.tradeId = tradeCount.incrementAndGet();
         trade.symbolId = symbolId;
         trade.price = price;
-        trade.quantity = quantity;
+        trade.quantity = (int) quantity;
         
         if (marketOrder.isBuy()) {
             trade.buyOrderId = marketOrder.orderId;
@@ -349,7 +349,7 @@ public class OptimizedOrderBook {
             }
         }
         
-        sb.append("Spread: %.4f\n", getSpread() / 10000.0);
+        sb.append(String.format("Spread: %.4f\n", getSpread() / 10000.0));
         
         sb.append("BIDS:\n");
         for (int i = priceToIndex(bestBid); i >= Math.max(priceToIndex(bestBid) - 10, 0); i--) {

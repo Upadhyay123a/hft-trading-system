@@ -46,6 +46,16 @@ public class Order {
         return quantity - filledQuantity;
     }
     
+    public void fill(long fillQuantity) {
+        this.filledQuantity += fillQuantity;
+        if (this.filledQuantity >= this.quantity) {
+            this.filledQuantity = this.quantity;
+            this.status = 2; // Filled
+        } else if (this.filledQuantity > 0) {
+            this.status = 1; // Partial fill
+        }
+    }
+    
     @Override
     public String toString() {
         return String.format("Order[id=%d, symbol=%d, %s, price=%.4f, qty=%d/%d, status=%d]",
