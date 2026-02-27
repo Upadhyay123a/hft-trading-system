@@ -48,6 +48,41 @@
             <artifactId>commons-math3</artifactId>
             <version>3.6.1</version>
         </dependency>
+
+        <!-- LMAX Disruptor for ultra-low latency messaging -->
+        <dependency>
+            <groupId>com.lmax</groupId>
+            <artifactId>disruptor</artifactId>
+            <version>3.4.4</version>
+        </dependency>
+
+        <!-- Aeron for high-performance messaging -->
+        <dependency>
+            <groupId>io.aeron</groupId>
+            <artifactId>aeron-all</artifactId>
+            <version>1.42.0</version>
+        </dependency>
+
+        <!-- Agrona for high-performance buffers -->
+        <dependency>
+            <groupId>org.agrona</groupId>
+            <artifactId>agrona</artifactId>
+            <version>1.21.1</version>
+        </dependency>
+
+        <!-- QuickFIX/J for FIX protocol support -->
+        <dependency>
+            <groupId>org.quickfixj</groupId>
+            <artifactId>quickfixj-core</artifactId>
+            <version>2.3.1</version>
+        </dependency>
+
+        <!-- Netty for high-performance networking -->
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-all</artifactId>
+            <version>4.1.104.Final</version>
+        </dependency>
     </dependencies>
 
     <build>
