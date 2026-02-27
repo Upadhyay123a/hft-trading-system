@@ -92,7 +92,7 @@ public class SimpleMLTest {
         logger.info("✅ Phase 1 Test Results:");
         logger.info("   - Features: {}", features.size());
         logger.info("   - Labels: {}", labels.size());
-        classifier.getStats();
+        logger.info("   - Classifier trained: {}", classifier.isTrained());
         logger.info("   - Accuracy: {:.1f}%", accuracy);
         logger.info("   - Avg prediction time: {:.3f} microseconds", avgTime);
     }
@@ -104,7 +104,11 @@ public class SimpleMLTest {
         LSTMPricePredictor lstm = new LSTMPricePredictor(0.001);
         
         // Generate training data
-        List<Double> priceData = generatePriceData(1000);
+        List<Double> priceData = new ArrayList<>();
+        double[] priceArray = generatePriceData(1000);
+        for (double price : priceArray) {
+            priceData.add(price);
+        }
         
         long startTime = System.nanoTime();
         
@@ -149,7 +153,7 @@ public class SimpleMLTest {
         logger.info("   - Avg prediction time: {:.3f} microseconds", avgPredictionTime);
         
         // Test Reinforcement Learning
-        ReinforcementLearningAgent rlAgent = new ReinforcementLearningLearningAgent(10, 6);
+        ReinforcementLearningAgent rlAgent = new ReinforcementLearningAgent(10, 6);
         
         startTime = System.nanoTime();
         
@@ -174,13 +178,19 @@ public class SimpleMLTest {
         rlAgent.getStats();
         
         // Combined performance test
+        TechnicalIndicators testIndicators = new TechnicalIndicators(100);
+        MarketRegimeClassifier testClassifier = new MarketRegimeClassifier();
+        
+        // Train test classifier
+        testClassifier.train(features, labels);
+        
         startTime = System.nanoTime();
         
         int totalOperations = 0;
         for (int i = 0; i < 1000; i++) {
             // Phase 1: Calculate indicators
-            double[] allIndicators = indicators.getAllIndicators();
-            MarketRegimeClassifier.MarketRegime regime = classifier.predict(allIndicators);
+            double[] allIndicators = testIndicators.getAllIndicators();
+            MarketRegimeClassifier.MarketRegime regime = testClassifier.predict(allIndicators);
             
             // Phase 2: LSTM prediction
             double[] recentPrices = getRecentPrices(priceData, i);
@@ -242,7 +252,7 @@ public class SimpleMLTest {
         int start = Math.max(0, priceData.size() - 50 - index);
         
         for (int j = 0; j < 50 && start + j < priceData.size(); j++) {
-            recentPrices[j] = priceData.get(start + j);
+            recent[j] = priceData.get(start + j);
         }
         
         return recent;
