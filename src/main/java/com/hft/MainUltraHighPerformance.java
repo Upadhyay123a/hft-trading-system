@@ -20,8 +20,15 @@ public class MainUltraHighPerformance {
         
         try {
             // Create strategy and risk manager
-            MarketMakingStrategy strategy = new MarketMakingStrategy();
-            RiskManager riskManager = new RiskManager();
+            MarketMakingStrategy strategy = new MarketMakingStrategy(1, 0.02, 1, 5);
+            RiskManager.RiskConfig riskConfig = new RiskManager.RiskConfig(
+                10,        // maxPositionSize
+                0.10,      // maxDrawdownPercent (10%)
+                0.05,      // stopLossPercent (5%)
+                50000.0,   // maxDailyLoss ($50,000)
+                50         // maxOrdersPerSecond
+            );
+            RiskManager riskManager = new RiskManager(riskConfig);
             
             // Create ultra-high performance engine
             UltraHighPerformanceEngine engine = new UltraHighPerformanceEngine(strategy, riskManager);
