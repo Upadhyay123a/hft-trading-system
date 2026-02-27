@@ -37,6 +37,8 @@ public class UltraHighPerformanceEngine {
     private final AtomicLong ticksProcessed = new AtomicLong(0);
     private final AtomicLong tradesExecuted = new AtomicLong(0);
     private final AtomicLong ordersProcessed = new AtomicLong(0);
+    private final AtomicLong messagesProcessed = new AtomicLong(0);
+    private final AtomicLong fixMessagesProcessed = new AtomicLong(0);
     private final AtomicBoolean running = new AtomicBoolean(false);
     
     // WebSocket integration
@@ -140,6 +142,7 @@ public class UltraHighPerformanceEngine {
         aeronFeed.publishTick(timestamp, symbolId, price, volume, side);
         
         ticksProcessed.incrementAndGet();
+        messagesProcessed.incrementAndGet();
     }
     
     /**
@@ -155,6 +158,7 @@ public class UltraHighPerformanceEngine {
                                    order.timestamp, order.status, order.filledQuantity);
         
         ordersProcessed.incrementAndGet();
+        messagesProcessed.incrementAndGet();
     }
     
     /**
@@ -162,6 +166,7 @@ public class UltraHighPerformanceEngine {
      */
     private void handleFixMessage(byte[] fixData) {
         try {
+            fixMessagesProcessed.incrementAndGet();
             FixProtocolHandler.FixMessage message = fixHandler.parseFixMessage(fixData);
             String msgType = message.getMsgType();
             
@@ -349,6 +354,8 @@ public class UltraHighPerformanceEngine {
     public long getTicksProcessed() { return ticksProcessed.get(); }
     public long getOrdersProcessed() { return ordersProcessed.get(); }
     public long getTradesExecuted() { return tradesExecuted.get(); }
+    public long getMessagesProcessed() { return messagesProcessed.get(); }
+    public long getFixMessagesProcessed() { return fixMessagesProcessed.get(); }
     public boolean isRunning() { return running.get(); }
     
     /**

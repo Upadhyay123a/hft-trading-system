@@ -1,9 +1,7 @@
 package com.hft;
 
 import com.hft.core.SymbolMapper;
-import com.hft.core.TradingEngine;
-import com.hft.core.HighThroughputEngine;
-import com.hft.core.RealTradingEngine;
+import com.hft.core.integration.UltraHighPerformanceEngine;
 import com.hft.exchange.BinanceConnector;
 import com.ft.risk.RiskManager;
 import com.hft.strategy.MarketMakingStrategy;
@@ -58,92 +56,41 @@ public class Main {
         Strategy strategy = chooseStrategy();
         
         // Choose engine type
-        int engineChoice = chooseEngineType();
-        
         // Configure risk management
         RiskManager.RiskConfig riskConfig = RiskManager.RiskConfig.moderate();
         RiskManager riskManager = new RiskManager(riskConfig);
         
         // Create and start trading engine
-        if (engineChoice == 3) {
-            // Real Trading Engine
-            RealTradingEngine.EngineConfig engineConfig = RealTradingEngine.EngineConfig.defaultConfig();
-            RealTradingEngine engine = new RealTradingEngine(strategy, riskManager, engineConfig, symbols);
-            
-            logger.info("Starting REAL trading engine with actual exchange APIs...");
-            engine.start().thenRun(() -> {
-                logger.info("Real trading engine started successfully");
-                
-                // Wait for user input to stop
-                logger.info("\nPress ENTER to stop trading...\n");
-                Scanner scanner = new Scanner(System.in);
-                scanner.nextLine();
-                
-                // Shutdown
-                logger.info("Shutting down real trading engine...");
-                engine.stop();
-                
-                logger.info("=== Final Statistics ===");
-                logger.info("Strategy: {}", strategy.getName());
-                logger.info("Total P&L: ${}", String.format("%.2f", engine.getTotalPnL()));
-                logger.info("Orders Placed: {}", engine.getOrdersPlaced());
-                logger.info("Orders Filled: {}", engine.getOrdersFilled());
-                logger.info("========================");
-                logger.info("Real trading stopped. Goodbye!");
-            }).exceptionally(throwable -> {
-                logger.error("Failed to start real trading engine", throwable);
-                return null;
-            });
-            
-        } else if (engineChoice == 2) {
-            HighThroughputEngine.EngineConfig engineConfig = HighThroughputEngine.EngineConfig.highThroughput();
-            HighThroughputEngine engine = new HighThroughputEngine(connector, strategy, riskManager, engineConfig);
-            
-            logger.info("Starting high-throughput trading engine...");
-            engine.start();
-            
-            // Wait for user input to stop
-            logger.info("\nPress ENTER to stop trading...\n");
-            Scanner scanner = new Scanner(System.in);
-            scanner.nextLine();
-            
-            // Shutdown
-            logger.info("Shutting down...");
-            engine.stop();
-            
-            logger.info("=== Final Statistics ===");
-            logger.info("Strategy: {}", strategy.getName());
-            logger.info("Total P&L: ${}", String.format("%.2f", strategy.getPnL()));
-            logger.info("Ticks Processed: {}", engine.getTicksProcessed());
-            logger.info("Trades Executed: {}", engine.getTradesExecuted());
-            logger.info("Orders Submitted: {}", engine.getOrdersSubmitted());
-            logger.info("Orders Rejected: {}", engine.getOrdersRejected());
-        } else {
-            TradingEngine engine = new TradingEngine(connector, strategy, riskManager);
-            
-            logger.info("Starting standard trading engine...");
-            engine.start();
-            
-            // Wait for user input to stop
-            logger.info("\nPress ENTER to stop trading...\n");
-            Scanner scanner = new Scanner(System.in);
-            scanner.nextLine();
-            
-            // Shutdown
-            logger.info("Shutting down...");
-            engine.stop();
-            
-            logger.info("=== Final Statistics ===");
-            logger.info("Strategy: {}", strategy.getName());
-            logger.info("Total P&L: ${}", String.format("%.2f", strategy.getPnL()));
-            logger.info("Ticks Processed: {}", engine.getTicksProcessed());
-            logger.info("Trades Executed: {}", engine.getTradesExecuted());
-        }
+        logger.info("Starting Ultra-High Performance Trading Engine...");
+        logger.info("Binary Encoding + LMAX Disruptor + Aeron + FIX Protocol");
+        
+        UltraHighPerformanceEngine engine = new UltraHighPerformanceEngine(strategy, riskManager);
+        
+        // Start the engine
+        engine.start();
+        
+        // Wait for user input to stop
+        logger.info("\nPress ENTER to stop trading...\n");
+        Scanner scanner = new Scanner(System.in);
+        scanner.nextLine();
+        
+        // Shutdown
+        logger.info("Shutting down ultra-high performance engine...");
+        engine.stop();
+        
+        logger.info("=== Final Statistics ===");
+        logger.info("Strategy: {}", strategy.getName());
+        logger.info("Total P&L: ${}", String.format("%.2f", strategy.getPnL()));
+        logger.info("Ticks Processed: {}", engine.getTicksProcessed());
+        logger.info("Orders Processed: {}", engine.getOrdersProcessed());
+        logger.info("Trades Executed: {}", engine.getTradesExecuted());
+        logger.info("Messages via Aeron: {}", engine.getMessagesProcessed());
+        logger.info("FIX Messages: {}", engine.getFixMessagesProcessed());
         logger.info("========================");
         logger.info("Shutdown complete. Goodbye!");
     }
     
-    private static int chooseEngineType() {
+    private static int chooseEngine() {
         Scanner scanner = new Scanner(System.in);
         
         System.out.println("\nChoose Trading Engine:");

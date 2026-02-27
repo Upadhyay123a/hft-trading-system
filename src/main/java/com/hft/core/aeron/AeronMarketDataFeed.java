@@ -5,9 +5,11 @@ import io.aeron.Aeron;
 import io.aeron.Publication;
 import io.aeron.Subscription;
 import io.aeron.driver.MediaDriver;
-import org.agrona.BufferUtil;
+import io.aeron.driver.ThreadingMode;
+import io.aeron.logbuffer.Header;
 import org.agrona.CloseHelper;
 import org.agrona.DirectBuffer;
+import org.agrona.concurrent.UnsafeBuffer;
 import org.agrona.concurrent.IdleStrategy;
 import org.agrona.concurrent.SleepingMillisIdleStrategy;
 import org.slf4j.Logger;
@@ -42,7 +44,7 @@ public class AeronMarketDataFeed {
     private final Subscription orderSubscription;
     
     // Buffers
-    private final ByteBuffer sendBuffer = BufferUtil.allocateDirect(1024);
+    private final ByteBuffer sendBuffer = ByteBuffer.allocateDirect(1024);
     private final AtomicBoolean running = new AtomicBoolean(false);
     
     // Performance
@@ -55,10 +57,8 @@ public class AeronMarketDataFeed {
         // Start embedded media driver
         MediaDriver.Context driverContext = new MediaDriver.Context()
             .dirDeleteOnStart(true)
-            .threadingMode("dedicated")
-            .sharedIdleStrategy(new SleepingMillisIdleStrategy(1))
-            .socketReceiveBufferSize(1024 * 1024) // 1MB
-            .socketSendBufferSize(1024 * 1024);   // 1MB
+            .threadingMode(ThreadingMode.DEDICATED)
+            .sharedIdleStrategy(new SleepingMillisIdleStrategy(1));
             
         this.mediaDriver = MediaDriver.launch(driverContext);
         
@@ -119,7 +119,8 @@ public class AeronMarketDataFeed {
         sendBuffer.flip();
         
         // Publish via Aeron
-        long result = marketDataPublication.offer(sendBuffer);
+        DirectBuffer directBuffer = new UnsafeBuffer(sendBuffer);
+        long result = marketDataPublication.offer(directBuffer);
         
         if (result < 0) {
             handlePublicationFailure(result, "market data tick");
@@ -143,7 +144,8 @@ public class AeronMarketDataFeed {
         sendBuffer.flip();
         
         // Publish via Aeron
-        long result = marketDataPublication.offer(sendBuffer);
+        DirectBuffer directBuffer = new UnsafeBuffer(sendBuffer);
+        long result = marketDataPublication.offer(directBuffer);
         
         if (result < 0) {
             handlePublicationFailure(result, "order update");
@@ -157,7 +159,8 @@ public class AeronMarketDataFeed {
      * Publish to WebSocket feed
      */
     private void publishToWebSocket(ByteBuffer data) {
-        long result = websocketPublication.offer(data);
+        DirectBuffer buffer = new UnsafeBuffer(data);
+        long result = websocketPublication.offer(buffer);
         if (result < 0) {
             handlePublicationFailure(result, "WebSocket feed");
         }
@@ -199,10 +202,10 @@ public class AeronMarketDataFeed {
     /**
      * Handle incoming market data message
      */
-    private void handleMarketDataMessage(DirectBuffer buffer, int offset, int length, 
-                                        int sessionId, int termId) {
+    private void handleMarketDataMessage(DirectBuffer buffer, int offset, int length, Header header) {
         try {
-            ByteBuffer data = BufferUtil.slice(buffer, offset, length);
+            UnsafeBuffer slicedBuffer = new UnsafeBuffer(buffer, offset, length);
+            ByteBuffer data = slicedBuffer.byteBuffer();
             byte messageType = data.get(0);
             
             switch (messageType) {
@@ -225,10 +228,10 @@ public class AeronMarketDataFeed {
     /**
      * Handle incoming order message
      */
-    private void handleOrderMessage(DirectBuffer buffer, int offset, int length, 
-                                   int sessionId, int termId) {
+    private void handleOrderMessage(DirectBuffer buffer, int offset, int length, Header header) {
         try {
-            ByteBuffer data = BufferUtil.slice(buffer, offset, length);
+            UnsafeBuffer slicedBuffer = new UnsafeBuffer(buffer, offset, length);
+            ByteBuffer data = slicedBuffer.byteBuffer();
             byte messageType = data.get(0);
             
             if (messageType == BinaryProtocol.ORDER_MESSAGE) {

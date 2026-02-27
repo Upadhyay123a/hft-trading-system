@@ -75,8 +75,8 @@ public class DisruptorEngine {
         };
         
         // Create disruptor
-        this.disruptor = new Disruptor<>(
-            byte[]::new,
+        this.disruptor = new Disruptor<byte[]>(
+            () -> new byte[256], // EventFactory that creates byte arrays
             BUFFER_SIZE,
             threadFactory,
             ProducerType.MULTI, // Allow multiple producers
