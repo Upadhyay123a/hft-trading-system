@@ -47,6 +47,7 @@ public class MLEnhancedMarketMakingStrategy implements TradingStrategy {
     private int currentPosition;
     private long lastQuoteTime;
     private boolean isTrained;
+    private MarketRegimeClassifier.MarketRegime lastRegime = MarketRegimeClassifier.MarketRegime.RANGING;
     
     // Performance tracking
     private final AtomicLong quotesGenerated;
@@ -306,8 +307,6 @@ public class MLEnhancedMarketMakingStrategy implements TradingStrategy {
     private void updatePerformanceMetrics(MarketRegimeClassifier.MarketRegime currentRegime) {
         // This would be called periodically to update strategy performance
         // For now, just log regime changes
-        static MarketRegimeClassifier.MarketRegime lastRegime = MarketRegimeClassifier.MarketRegime.RANGING;
-        
         if (currentRegime != lastRegime) {
             regimeChanges.incrementAndGet();
             logger.info("Regime changed to: {}", currentRegime);
