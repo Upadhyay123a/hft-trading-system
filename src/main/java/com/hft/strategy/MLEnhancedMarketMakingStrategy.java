@@ -1,8 +1,9 @@
 package com.hft.strategy;
 
 import com.hft.core.Order;
-import com.hft.core.OrderBook;
 import com.hft.core.Tick;
+import com.hft.core.Trade;
+import com.hft.orderbook.OrderBook;
 import com.hft.ml.MarketRegimeClassifier;
 import com.hft.ml.TechnicalIndicators;
 import com.ft.risk.RiskManager;
@@ -23,7 +24,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * - Jane Street: Regime-aware inventory management
  * - Two Sigma: ML-driven quote optimization
  */
-public class MLEnhancedMarketMakingStrategy implements TradingStrategy {
+public class MLEnhancedMarketMakingStrategy implements Strategy {
     
     private static final Logger logger = LoggerFactory.getLogger(MLEnhancedMarketMakingStrategy.class);
     
@@ -111,19 +112,26 @@ public class MLEnhancedMarketMakingStrategy implements TradingStrategy {
     }
     
     @Override
-    public void onTick(Tick tick, OrderBook orderBook, List<Order> orders) {
+    public void initialize() {
+        logger.info("ML-Enhanced Market Making Strategy initialized for symbol {}", symbolId);
+        logger.info("Base spread: {}%, Order size: {}, Max position: {}", baseSpreadPercent, orderSize, maxPosition);
+    }
+    
+    @Override
+    public List<Order> onTick(Tick tick, OrderBook orderBook) {
         // Update indicators with new tick data
         indicators.addData(tick.price / 10000.0, tick.volume / 1000000.0); // Convert from long to double
         
         // Only make decisions if we have enough data
         if (!indicators.hasEnoughData(indicatorLookback)) {
-            return;
+            return new ArrayList<>();
         }
         
         // Get current market regime
         MarketRegimeClassifier.MarketRegime currentRegime = getCurrentRegime();
         
         // Generate quotes based on regime
+        List<Order> orders = new ArrayList<>();
         generateQuotes(tick, orderBook, orders, currentRegime);
         
         // Manage existing orders based on regime
@@ -131,6 +139,16 @@ public class MLEnhancedMarketMakingStrategy implements TradingStrategy {
         
         // Update performance metrics
         updatePerformanceMetrics(currentRegime);
+        
+        return orders;
+    }
+    
+    @Override
+    public void onTrade(Trade trade) {
+        // For simplicity, assume trades affect position based on our order tracking
+        // In a real implementation, we'd track which orders were ours
+        // For now, just update P&L
+        totalPnL += trade.price * trade.quantity;
     }
     
     /**
@@ -196,13 +214,13 @@ public class MLEnhancedMarketMakingStrategy implements TradingStrategy {
         
         // Generate orders
         if (ourBid > 0 && ourBid < bestBid) {
-            Order bidOrder = createOrder(ourBid, regimeOrderSize, Order.OrderType.LIMIT, Order.OrderSide.BUY);
+            Order bidOrder = createOrder(ourBid, regimeOrderSize, (byte)0, (byte)0); // LIMIT, BUY
             orders.add(bidOrder);
             quotesGenerated.incrementAndGet();
         }
         
         if (ourAsk > 0 && ourAsk > bestAsk) {
-            Order askOrder = createOrder(ourAsk, regimeOrderSize, Order.OrderType.LIMIT, Order.OrderSide.SELL);
+            Order askOrder = createOrder(ourAsk, regimeOrderSize, (byte)0, (byte)1); // LIMIT, SELL
             orders.add(askOrder);
             quotesGenerated.incrementAndGet();
         }
@@ -241,11 +259,11 @@ public class MLEnhancedMarketMakingStrategy implements TradingStrategy {
     private void manageOrders(List<Order> orders, MarketRegimeClassifier.MarketRegime currentRegime) {
         // Cancel orders that are no longer appropriate for current regime
         orders.removeIf(order -> {
-            if (order.status == Order.OrderStatus.FILLED) {
+            if (order.status == 2) { // Filled
                 // Update position for filled orders
-                if (order.side == Order.OrderSide.BUY) {
+                if (order.side == 0) { // Buy
                     currentPosition += order.filledQuantity;
-                } else {
+                } else { // Sell
                     currentPosition -= order.filledQuantity;
                 }
                 return true; // Remove filled orders
@@ -278,7 +296,7 @@ public class MLEnhancedMarketMakingStrategy implements TradingStrategy {
     /**
      * Create a new order
      */
-    private Order createOrder(long price, int quantity, Order.OrderType type, Order.OrderSide side) {
+    private Order createOrder(long price, int quantity, byte type, byte side) {
         Order order = new Order();
         order.orderId = System.nanoTime(); // Unique ID
         order.symbolId = symbolId;
@@ -287,7 +305,7 @@ public class MLEnhancedMarketMakingStrategy implements TradingStrategy {
         order.side = side;
         order.type = type;
         order.timestamp = System.nanoTime();
-        order.status = Order.OrderStatus.NEW;
+        order.status = 0; // New
         order.filledQuantity = 0;
         
         return order;
