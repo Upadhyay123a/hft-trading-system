@@ -214,15 +214,28 @@ public class AllStrategiesRealDataTest {
             ticks[1] = createTick(2, ethUsdt); // ETH/USDT
             ticks[2] = createTick(3, ethBtc);  // ETH/BTC
             
-            // Process each tick
-            for (Tick tick : ticks) {
-                List<Order> orders = strategy.onTick(tick, null);
+            // Create order books for multi-symbol strategies
+            OrderBook orderBook1 = new OrderBook(1);
+            OrderBook orderBook2 = new OrderBook(2);
+            
+            for (int j = 0; j < 10000; j++) {
+                // Generate correlated market data
+                Tick tick1 = generateCorrelatedTick(j, 1, btcUsdt);
+                Tick tick2 = generateCorrelatedTick(j, 2, ethUsdt);
+                
+                // Update order books
+                updateOrderBook(orderBook1, tick1);
+                updateOrderBook(orderBook2, tick2);
+                
+                List<Order> orders1 = strategy.onTick(tick1, orderBook1);
+                List<Order> orders2 = strategy.onTick(tick2, orderBook2);
                 
                 // Simulate arbitrage execution
-                if (!orders.isEmpty() && random.nextDouble() < 0.02) {
+                if (!orders1.isEmpty() && random.nextDouble() < 0.02) {
                     Trade trade = new Trade();
-                    trade.tradeId = i;
-                    trade.symbolId = tick.symbolId;
+                    trade.tradeId = j;
+                    trade.symbolId = tick1.symbolId;
+                    trade.price = tick1.price;
                     trade.price = tick.price;
                     trade.quantity = 100;
                     trade.buyOrderId = orders.get(0).orderId;
