@@ -66,7 +66,7 @@ public class LSTMPricePredictor {
         int outputWeights = HIDDEN_SIZE * OUTPUT_SIZE;
         
         int totalWeights = inputWeights + lstmWeightsTotal + outputWeights;
-        int totalBiases = HIDDEN_SIZE * NUM_LAYERS + OUTPUT_SIZE;
+        int totalBiases = (HIDDEN_SIZE * 4 * NUM_LAYERS) + OUTPUT_SIZE; // 4 biases per LSTM layer + output biases
         
         this.weights = new double[totalWeights];
         this.biases = new double[totalBiases];
