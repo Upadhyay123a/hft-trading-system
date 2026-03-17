@@ -34,11 +34,15 @@ public class PerformanceMonitor {
     // Throughput tracking
     private final ConcurrentHashMap<String, ThroughputTracker> throughputTrackers = new ConcurrentHashMap<>();
     
+    // Monitoring thread control
+    private volatile boolean running = true;
+    private Thread monitoringThread;
+    
     private PerformanceMonitor() {
         // Start monitoring thread
-        Thread monitoringThread = new Thread(this::monitoringLoop, "PerformanceMonitor");
-        monitoringThread.setDaemon(true);
-        monitoringThread.start();
+        this.monitoringThread = new Thread(this::monitoringLoop, "PerformanceMonitor");
+        this.monitoringThread.setDaemon(true);
+        this.monitoringThread.start();
         
         logger.info("Performance Monitor initialized");
     }
@@ -158,8 +162,25 @@ public class PerformanceMonitor {
         logger.info("Performance metrics reset");
     }
     
+    /**
+     * Shutdown the performance monitor
+     */
+    public void shutdown() {
+        running = false;
+        if (monitoringThread != null) {
+            monitoringThread.interrupt();
+            try {
+                monitoringThread.join(1000); // Wait up to 1 second for thread to finish
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                logger.warn("Interrupted while waiting for monitoring thread to stop");
+            }
+        }
+        logger.info("Performance Monitor shutdown");
+    }
+    
     private void monitoringLoop() {
-        while (!Thread.currentThread().isInterrupted()) {
+        while (running && !Thread.currentThread().isInterrupted()) {
             try {
                 Thread.sleep(30000); // Report every 30 seconds
                 printReport();
@@ -170,6 +191,7 @@ public class PerformanceMonitor {
                 logger.error("Error in monitoring loop", e);
             }
         }
+        logger.info("Performance monitoring loop stopped");
     }
     
     private ConcurrentHashMap<String, LatencyStats> getLatencyStats() {

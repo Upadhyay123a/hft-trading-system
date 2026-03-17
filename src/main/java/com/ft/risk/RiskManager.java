@@ -383,6 +383,30 @@ public class RiskManager {
     }
     
     /**
+     * Calculate Value at Risk (VaR) with specified confidence level
+     */
+    public double calculateVaR(double confidenceLevel) {
+        if (returnIndex < 20) return 0.0;
+        
+        double portfolioValue = Math.abs(totalPnL.get() / 10000.0);
+        if (portfolioValue < 10000) return 0.0; // Skip for small portfolios
+        
+        // Z-scores for common confidence levels
+        double zScore;
+        if (confidenceLevel >= 0.99) {
+            zScore = 2.33; // 99%
+        } else if (confidenceLevel >= 0.95) {
+            zScore = 1.645; // 95%
+        } else if (confidenceLevel >= 0.90) {
+            zScore = 1.28; // 90%
+        } else {
+            zScore = 1.645; // Default to 95%
+        }
+        
+        return zScore * volatility * portfolioValue;
+    }
+    
+    /**
      * Calculate Sortino Ratio (downside deviation)
      */
     private double calculateSortinoRatio() {
@@ -414,10 +438,38 @@ public class RiskManager {
         return maxDrawdown == 0 ? 0.0 : totalReturn / maxDrawdown;
     }
     
-    private double calculateDrawdown() {
+    public double calculateDrawdown() {
         long currentEquity = totalPnL.get();
         long peakEq = peakEquity.get();
         return peakEq == 0 ? 0.0 : (double)(peakEq - currentEquity) / peakEq * 100;
+    }
+    
+    /**
+     * Check position limit for a specific symbol
+     */
+    public boolean checkPositionLimit(String symbol, double positionSize) {
+        // Convert symbol to symbolId (simplified - in production would use symbol mapping)
+        int symbolId = symbol.hashCode();
+        
+        long currentPos = positions.getOrDefault(symbolId, 0L);
+        long newPos = currentPos + (long)positionSize;
+        
+        return Math.abs(newPos) <= maxPositionSize;
+    }
+    
+    /**
+     * Calculate portfolio risk metrics
+     */
+    public double calculatePortfolioRisk() {
+        double totalExposure = 0.0;
+        
+        for (Long pos : positions.values()) {
+            totalExposure += Math.abs(pos);
+        }
+        
+        // Risk as percentage of maximum allowed exposure
+        double maxTotalExposure = maxPositionSize * 10; // Allow 10 symbols at max position
+        return maxTotalExposure == 0 ? 0.0 : (totalExposure / maxTotalExposure) * 100;
     }
     
     private void logRiskMetrics() {
