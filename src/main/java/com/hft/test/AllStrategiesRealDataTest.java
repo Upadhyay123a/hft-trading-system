@@ -245,14 +245,47 @@ public class AllStrategiesRealDataTest {
         }
     }
     
-    private void updateOrderBook(OrderBook orderBook2, Tick tick2) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'updateOrderBook'");
+    private void updateOrderBook(OrderBook orderBook, Tick tick) {
+        // Simulate order book updates with realistic data
+        if (Math.random() < 0.3) { // 30% chance to update order book
+            // Add some orders around the current price
+            for (int i = 0; i < 5; i++) {
+                Order bid = new Order();
+                bid.orderId = System.nanoTime() + i;
+                bid.symbolId = tick.symbolId;
+                bid.price = tick.price - (i + 1) * 100; // Below current price
+                bid.quantity = 100 + (int)(Math.random() * 1000);
+                bid.side = 0; // Buy
+                bid.timestamp = System.nanoTime();
+                orderBook.addOrder(bid);
+                
+                Order ask = new Order();
+                ask.orderId = System.nanoTime() + i + 1000;
+                ask.symbolId = tick.symbolId;
+                ask.price = tick.price + (i + 1) * 100; // Above current price
+                ask.quantity = 100 + (int)(Math.random() * 1000);
+                ask.side = 1; // Sell
+                ask.timestamp = System.nanoTime();
+                orderBook.addOrder(ask);
+            }
+        }
     }
 
-    private Tick generateCorrelatedTick(int j, int i, double btcUsdt) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'generateCorrelatedTick'");
+    private Tick generateCorrelatedTick(int index, int symbolId, double basePrice) {
+        Random random = new Random(42 + index); // Fixed seed for reproducible results
+        Tick tick = new Tick();
+        tick.symbolId = symbolId;
+        tick.timestamp = System.nanoTime() + index * 1000000; // 1ms intervals
+        
+        // Generate correlated price movement
+        double volatility = 0.001; // 0.1% volatility
+        double priceChange = random.nextGaussian() * volatility;
+        double price = basePrice * (1 + priceChange);
+        
+        tick.price = (long)(price * 10000); // Convert to ticks
+        tick.volume = 100 + random.nextInt(1000);
+        
+        return tick;
     }
 
     /**
