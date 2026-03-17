@@ -236,9 +236,8 @@ public class AllStrategiesRealDataTest {
                     trade.tradeId = j;
                     trade.symbolId = tick1.symbolId;
                     trade.price = tick1.price;
-                    trade.price = tick.price;
                     trade.quantity = 100;
-                    trade.buyOrderId = orders.get(0).orderId;
+                    trade.buyOrderId = orders1.get(0).orderId;
                     trade.sellOrderId = 0;
                     strategy.onTrade(trade);
                 }
@@ -246,6 +245,16 @@ public class AllStrategiesRealDataTest {
         }
     }
     
+    private void updateOrderBook(OrderBook orderBook2, Tick tick2) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'updateOrderBook'");
+    }
+
+    private Tick generateCorrelatedTick(int j, int i, double btcUsdt) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'generateCorrelatedTick'");
+    }
+
     /**
      * Create tick helper
      */
