@@ -182,7 +182,7 @@ public class PerformanceMonitor {
     private void monitoringLoop() {
         while (running && !Thread.currentThread().isInterrupted()) {
             try {
-                Thread.sleep(30000); // Report every 30 seconds
+                Thread.sleep(60000); // Report every 60 seconds instead of 30
                 printReport();
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();

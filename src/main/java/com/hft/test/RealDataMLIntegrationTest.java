@@ -35,7 +35,7 @@ public class RealDataMLIntegrationTest {
         
         try {
             // Initialize components
-            MultiExchangeManager exchangeManager = new MultiExchangeManager();
+            MultiExchangeManager exchangeManager = new MultiExchangeManager(true, true, 3);
             HistoricalDataTrainer trainer = new HistoricalDataTrainer(exchangeManager);
             RealTimeMLProcessor processor = new RealTimeMLProcessor(exchangeManager);
             MLModelPersistence modelPersistence = new MLModelPersistence();
