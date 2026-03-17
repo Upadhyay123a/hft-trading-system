@@ -228,7 +228,7 @@ public class LSTMPricePredictor {
             for (int i = 0; i < HIDDEN_SIZE; i++) {
                 // Calculate correct weight offsets for this layer
                 int baseLayerOffset = getInputWeightsSize() + (layerOffset * getLSTMWeightsPerLayer());
-                int baseBiasOffset = HIDDEN_SIZE * layerOffset;
+                int baseBiasOffset = (HIDDEN_SIZE * 4 * layerOffset); // 4 biases per LSTM layer
                 
                 // Forget gate
                 double forgetGate = sigmoid(
