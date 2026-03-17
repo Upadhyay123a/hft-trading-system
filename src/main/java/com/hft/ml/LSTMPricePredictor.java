@@ -228,33 +228,34 @@ public class LSTMPricePredictor {
             for (int i = 0; i < HIDDEN_SIZE; i++) {
                 // Calculate correct weight offsets for this layer
                 int baseLayerOffset = getInputWeightsSize() + (layerOffset * getLSTMWeightsPerLayer());
+                int baseBiasOffset = HIDDEN_SIZE * layerOffset;
                 
                 // Forget gate
                 double forgetGate = sigmoid(
                     weights[baseLayerOffset + i] * x +
                     weights[baseLayerOffset + HIDDEN_SIZE + i] * hiddenState[i] +
-                    biases[baseLayerOffset + i]
+                    biases[baseBiasOffset + i]
                 );
                 
                 // Input gate
                 double inputGate = sigmoid(
                     weights[baseLayerOffset + 2 * HIDDEN_SIZE + i] * x +
                     weights[baseLayerOffset + 3 * HIDDEN_SIZE + i] * hiddenState[i] +
-                    biases[baseLayerOffset + HIDDEN_SIZE + i]
+                    biases[baseBiasOffset + HIDDEN_SIZE + i]
                 );
                 
                 // Output gate
                 double outputGate = sigmoid(
                     weights[baseLayerOffset + 4 * HIDDEN_SIZE + i] * x +
                     weights[baseLayerOffset + 5 * HIDDEN_SIZE + i] * hiddenState[i] +
-                    biases[baseLayerOffset + 2 * HIDDEN_SIZE + i]
+                    biases[baseBiasOffset + 2 * HIDDEN_SIZE + i]
                 );
                 
                 // Candidate cell state
                 double candidateCell = tanh(
                     weights[baseLayerOffset + 6 * HIDDEN_SIZE + i] * x +
                     weights[baseLayerOffset + 7 * HIDDEN_SIZE + i] * hiddenState[i] +
-                    biases[baseLayerOffset + 3 * HIDDEN_SIZE + i]
+                    biases[baseBiasOffset + 3 * HIDDEN_SIZE + i]
                 );
                 
                 // Update cell state
