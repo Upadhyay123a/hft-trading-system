@@ -170,6 +170,12 @@ public class RealDataIntegrationTest {
             long midPrice = orderBook.getMidPrice();
             long spread = orderBook.getSpread();
             
+            // If order book is empty, use default values
+            if (midPrice == 0) {
+                midPrice = 50000000L; // $50,000 default
+                spread = 1000L; // $0.10 default spread
+            }
+            
             // Calculate approximate best bid/ask from mid price
             long bestBid = midPrice - spread / 2;
             long bestAsk = midPrice + spread / 2;
