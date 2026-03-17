@@ -266,12 +266,15 @@ public class RealDataIntegrationTest {
             int totalOrders = 0;
             double totalPnL = 0.0;
             
+            // Create a simple order book for strategies
+            OrderBook orderBook = new OrderBook(1);
+            
             for (Strategy strategy : strategies) {
                 // Simulate market data
                 for (int i = 0; i < totalTicks; i++) {
                     Tick tick = generateRealisticTick(i);
                     
-                    List<Order> orders = strategy.onTick(tick, null);
+                    List<Order> orders = strategy.onTick(tick, orderBook);
                     totalOrders += orders.size();
                     
                     // Simulate some trades

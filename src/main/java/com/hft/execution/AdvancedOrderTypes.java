@@ -1,7 +1,6 @@
 package com.hft.execution;
 
 import com.hft.core.Order;
-import com.hft.core.OrderBook;
 import com.hft.ml.RealTimeMLProcessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -86,7 +85,7 @@ public class AdvancedOrderTypes {
      */
     public VWAPAlgorithm createVWAP(String orderId, String symbol, double totalVolume,
                                      long startTimeMs, long endTimeMs, Map<Integer, Double> volumeProfile) {
-        VWAPAlgorithm vwap = new VWAPAlgorithm(orderId, symbol, totalVolume, startTimeMs, endTimeMs, volumeProfile);
+        VWAPAlgorithm vwap = new VWAPAlgorithm(orderId, symbol, totalVolume, startTimeMs, endTimeMs, volumeProfile, scheduler);
         vwapAlgorithms.put(orderId, vwap);
         
         // Start execution with dynamic intervals
@@ -101,7 +100,7 @@ public class AdvancedOrderTypes {
      */
     public IcebergAlgorithm createIceberg(String orderId, String symbol, double totalVolume,
                                           double visibleSize, double price, boolean isBuy) {
-        IcebergAlgorithm iceberg = new IcebergAlgorithm(orderId, symbol, totalVolume, visibleSize, price, isBuy);
+        IcebergAlgorithm iceberg = new IcebergAlgorithm(orderId, symbol, totalVolume, visibleSize, price, isBuy, scheduler);
         icebergAlgorithms.put(orderId, iceberg);
         
         // Start execution immediately
@@ -116,7 +115,7 @@ public class AdvancedOrderTypes {
      */
     public MLOptimizedAlgorithm createMLOptimized(String orderId, String symbol, double totalVolume,
                                                  long startTimeMs, long endTimeMs, double maxSlippage) {
-        MLOptimizedAlgorithm ml = new MLOptimizedAlgorithm(orderId, symbol, totalVolume, startTimeMs, endTimeMs, maxSlippage);
+        MLOptimizedAlgorithm ml = new MLOptimizedAlgorithm(orderId, symbol, totalVolume, startTimeMs, endTimeMs, maxSlippage, mlProcessor, scheduler);
         mlAlgorithms.put(orderId, ml);
         
         // Start ML-optimized execution
@@ -211,19 +210,22 @@ public class AdvancedOrderTypes {
         private final long startTimeMs;
         private final long endTimeMs;
         private final Map<Integer, Double> volumeProfile; // Hour -> volume percentage
+        private final ScheduledExecutorService scheduler;
         
         private double executedVolume;
         private double remainingVolume;
         private final List<Order> placedOrders;
         
         public VWAPAlgorithm(String orderId, String symbol, double totalVolume,
-                              long startTimeMs, long endTimeMs, Map<Integer, Double> volumeProfile) {
+                              long startTimeMs, long endTimeMs, Map<Integer, Double> volumeProfile,
+                              ScheduledExecutorService scheduler) {
             this.orderId = orderId;
             this.symbol = symbol;
             this.totalVolume = totalVolume;
             this.startTimeMs = startTimeMs;
             this.endTimeMs = endTimeMs;
             this.volumeProfile = volumeProfile;
+            this.scheduler = scheduler;
             
             this.executedVolume = 0.0;
             this.remainingVolume = totalVolume;
@@ -306,19 +308,22 @@ public class AdvancedOrderTypes {
         private final double visibleSize;
         private final double price;
         private final boolean isBuy;
+        private final ScheduledExecutorService scheduler;
         
         private double executedVolume;
         private double remainingVolume;
         private final List<Order> placedOrders;
         
         public IcebergAlgorithm(String orderId, String symbol, double totalVolume,
-                               double visibleSize, double price, boolean isBuy) {
+                               double visibleSize, double price, boolean isBuy,
+                               ScheduledExecutorService scheduler) {
             this.orderId = orderId;
             this.symbol = symbol;
             this.totalVolume = totalVolume;
             this.visibleSize = visibleSize;
             this.price = price;
             this.isBuy = isBuy;
+            this.scheduler = scheduler;
             
             this.executedVolume = 0.0;
             this.remainingVolume = totalVolume;
@@ -384,6 +389,7 @@ public class AdvancedOrderTypes {
         private final long startTimeMs;
         private final long endTimeMs;
         private final double maxSlippage;
+        private final ScheduledExecutorService scheduler;
         
         private double executedVolume;
         private double remainingVolume;
@@ -391,7 +397,8 @@ public class AdvancedOrderTypes {
         private final RealTimeMLProcessor mlProcessor;
         
         public MLOptimizedAlgorithm(String orderId, String symbol, double totalVolume,
-                                   long startTimeMs, long endTimeMs, double maxSlippage) {
+                                   long startTimeMs, long endTimeMs, double maxSlippage,
+                                   RealTimeMLProcessor mlProcessor, ScheduledExecutorService scheduler) {
             this.orderId = orderId;
             this.symbol = symbol;
             this.totalVolume = totalVolume;
@@ -399,6 +406,7 @@ public class AdvancedOrderTypes {
             this.endTimeMs = endTimeMs;
             this.maxSlippage = maxSlippage;
             this.mlProcessor = mlProcessor; // Would be injected
+            this.scheduler = scheduler;
             
             this.executedVolume = 0.0;
             this.remainingVolume = totalVolume;
