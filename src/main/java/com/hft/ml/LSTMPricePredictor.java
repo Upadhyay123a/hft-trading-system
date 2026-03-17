@@ -226,32 +226,35 @@ public class LSTMPricePredictor {
             
             // LSTM gates: forget, input, output, candidate
             for (int i = 0; i < HIDDEN_SIZE; i++) {
+                // Calculate correct weight offsets for this layer
+                int baseLayerOffset = getInputWeightsSize() + (layerOffset * getLSTMWeightsPerLayer());
+                
                 // Forget gate
                 double forgetGate = sigmoid(
-                    weights[layerOffset + i] * x +
-                    weights[layerOffset + HIDDEN_SIZE + i] * hiddenState[i] +
-                    biases[layerOffset + i]
+                    weights[baseLayerOffset + i] * x +
+                    weights[baseLayerOffset + HIDDEN_SIZE + i] * hiddenState[i] +
+                    biases[baseLayerOffset + i]
                 );
                 
                 // Input gate
                 double inputGate = sigmoid(
-                    weights[layerOffset + 2 * HIDDEN_SIZE + i] * x +
-                    weights[layerOffset + 3 * HIDDEN_SIZE + i] * hiddenState[i] +
-                    biases[layerOffset + HIDDEN_SIZE + i]
+                    weights[baseLayerOffset + 2 * HIDDEN_SIZE + i] * x +
+                    weights[baseLayerOffset + 3 * HIDDEN_SIZE + i] * hiddenState[i] +
+                    biases[baseLayerOffset + HIDDEN_SIZE + i]
                 );
                 
                 // Output gate
                 double outputGate = sigmoid(
-                    weights[layerOffset + 4 * HIDDEN_SIZE + i] * x +
-                    weights[layerOffset + 5 * HIDDEN_SIZE + i] * hiddenState[i] +
-                    biases[layerOffset + 2 * HIDDEN_SIZE + i]
+                    weights[baseLayerOffset + 4 * HIDDEN_SIZE + i] * x +
+                    weights[baseLayerOffset + 5 * HIDDEN_SIZE + i] * hiddenState[i] +
+                    biases[baseLayerOffset + 2 * HIDDEN_SIZE + i]
                 );
                 
                 // Candidate cell state
                 double candidateCell = tanh(
-                    weights[layerOffset + 6 * HIDDEN_SIZE + i] * x +
-                    weights[layerOffset + 7 * HIDDEN_SIZE + i] * hiddenState[i] +
-                    biases[layerOffset + 3 * HIDDEN_SIZE + i]
+                    weights[baseLayerOffset + 6 * HIDDEN_SIZE + i] * x +
+                    weights[baseLayerOffset + 7 * HIDDEN_SIZE + i] * hiddenState[i] +
+                    biases[baseLayerOffset + 3 * HIDDEN_SIZE + i]
                 );
                 
                 // Update cell state
@@ -261,6 +264,13 @@ public class LSTMPricePredictor {
                 hiddenState[i] = outputGate * tanh(cellState[i]);
             }
         }
+    }
+    
+    /**
+     * Get LSTM weights per layer
+     */
+    private int getLSTMWeightsPerLayer() {
+        return 4 * HIDDEN_SIZE * (INPUT_SIZE + HIDDEN_SIZE);
     }
     
     /**
