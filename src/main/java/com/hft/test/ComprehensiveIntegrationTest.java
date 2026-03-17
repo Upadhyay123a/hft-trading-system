@@ -95,12 +95,14 @@ public class ComprehensiveIntegrationTest {
         
         // 1. Exchange Manager
         logger.info("Initializing exchange manager...");
-        exchangeManager = new MultiExchangeManager();
+        exchangeManager = new MultiExchangeManager(true, true, 3);
         
         // 2. Performance Engine
         logger.info("Initializing ultra-high performance engine...");
-        performanceEngine = new UltraHighPerformanceEngine();
-        performanceEngine.initialize();
+        Strategy strategy = new MarketMakingStrategy(1, 0.02, 1, 5);
+        strategy.initialize();
+        RiskManager riskManager = new RiskManager(RiskManager.RiskConfig.institutional());
+        performanceEngine = new UltraHighPerformanceEngine(strategy, riskManager);
         
         // 3. ML Processor
         logger.info("Initializing ML processor...");
@@ -108,7 +110,7 @@ public class ComprehensiveIntegrationTest {
         
         // 4. Advanced Order Types
         logger.info("Initializing advanced order types...");
-        advancedOrders = new AdvancedOrderTypes(exchangeManager);
+        advancedOrders = new AdvancedOrderTypes(mlProcessor);
         
         // 5. Portfolio Optimizer
         logger.info("Initializing portfolio optimizer...");
@@ -116,11 +118,18 @@ public class ComprehensiveIntegrationTest {
         
         // 6. Risk Manager
         logger.info("Initializing risk manager...");
-        riskManager = new RiskManager(INITIAL_CAPITAL);
+        RiskManager.RiskConfig riskConfig = new RiskManager.RiskConfig(
+            (long)(INITIAL_CAPITAL * 10), // maxPositionSize
+            10.0, // maxDrawdownPercent
+            5.0,  // stopLossPercent
+            INITIAL_CAPITAL * 0.1, // maxDailyLoss
+            50    // maxOrdersPerSecond
+        );
+        riskManager = new RiskManager(riskConfig);
         
         // 7. Performance Monitor
         logger.info("Initializing performance monitor...");
-        performanceMonitor = new PerformanceMonitor();
+        performanceMonitor = PerformanceMonitor.getInstance();
         
         // 8. Trading Strategies
         logger.info("Initializing trading strategies...");
@@ -161,7 +170,7 @@ public class ComprehensiveIntegrationTest {
         strategies.add(triArb);
         
         // ML Enhanced Strategy
-        MLEnhancedMarketMakingStrategy mlMarketMaking = new MLEnhancedMarketMakingStrategy(1, 0.02, 1, 5, mlProcessor);
+        MLEnhancedMarketMakingStrategy mlMarketMaking = new MLEnhancedMarketMakingStrategy(1, 0.02, 1, 5);
         mlMarketMaking.initialize();
         strategies.add(mlMarketMaking);
         
@@ -244,7 +253,7 @@ public class ComprehensiveIntegrationTest {
                 order.symbolId = 1;
                 order.price = 50000000L;
                 order.quantity = 1000;
-                order.isBuy = true;
+                order.side = 0;
                 order.timestamp = System.nanoTime();
                 
                 if (order.orderId < 0 || order.quantity <= 0) {
@@ -265,7 +274,7 @@ public class ComprehensiveIntegrationTest {
                 bid.symbolId = 1;
                 bid.price = 50000000L - (i * 100);
                 bid.quantity = 1000;
-                bid.isBuy = true;
+                bid.side = 0; // 0 = Buy
                 orderBook.addOrder(bid);
                 
                 Order ask = new Order();
@@ -273,7 +282,7 @@ public class ComprehensiveIntegrationTest {
                 ask.symbolId = 1;
                 ask.price = 50000000L + (i * 100);
                 ask.quantity = 1000;
-                ask.isBuy = false;
+                ask.side = 1; // 1 = Sell
                 orderBook.addOrder(ask);
             }
             

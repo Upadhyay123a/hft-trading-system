@@ -2,6 +2,8 @@ package com.hft.execution;
 
 import com.hft.core.Order;
 import com.hft.ml.RealTimeMLProcessor;
+import com.hft.ml.MarketRegimeClassifier;
+import com.hft.ml.MarketRegimeClassifier.MarketRegime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -342,8 +344,11 @@ public class AdvancedOrderTypes {
             double randomFactor = 0.7 + (Math.random() * 0.6); // 70% to 130%
             sliceSize *= randomFactor;
             
+            // Create final copy for lambda usage
+            final double finalSliceSize = sliceSize;
+            
             // Place visible order
-            Order visibleOrder = createVisibleOrder(sliceSize);
+            Order visibleOrder = createVisibleOrder(finalSliceSize);
             placedOrders.add(visibleOrder);
             
             logger.info("Iceberg {}: Visible order {:.6f}, hidden remaining: {:.6f}", 
@@ -351,8 +356,8 @@ public class AdvancedOrderTypes {
             
             // Simulate fill and place next slice
             scheduler.schedule(() -> {
-                executedVolume += sliceSize;
-                remainingVolume -= sliceSize;
+                executedVolume += finalSliceSize;
+                remainingVolume -= finalSliceSize;
                 
                 if (remainingVolume > 0) {
                     executeNextSlice(); // Place next slice
@@ -449,7 +454,7 @@ public class AdvancedOrderTypes {
         }
         
         private double calculateOptimalSliceSize(double predictedPrice, double confidence, 
-                                                RealTimeMLProcessor.MarketRegime regime) {
+                                                MarketRegimeClassifier.MarketRegime regime) {
             double baseSlice = totalVolume * 0.01; // 1% base slice
             
             // Adjust based on regime

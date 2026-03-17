@@ -4,6 +4,7 @@ import com.hft.core.Order;
 import com.hft.core.Tick;
 import com.hft.core.Trade;
 import com.hft.orderbook.OptimizedOrderBook;
+import com.hft.orderbook.OrderBook;
 import com.hft.strategy.MarketMakingStrategy;
 import com.hft.strategy.MomentumStrategy;
 import com.hft.strategy.StatisticalArbitrageStrategy;
@@ -392,8 +393,7 @@ public class RealDataIntegrationTest {
                 // 1. Market data arrives
                 Tick tick = generateRealisticTick(i);
                 
-                // 2. Add to order book
-                // Simulate order book updates
+                // 2. Add to order book (optional)
                 if (i % 10 == 0) {
                     Order bid = new Order();
                     bid.orderId = i * 2;
@@ -413,7 +413,7 @@ public class RealDataIntegrationTest {
                 }
                 
                 // 3. Strategy processes tick
-                List<Order> orders = strategy.onTick(tick, null);
+                List<Order> orders = strategy.onTick(tick, null); // Pass null for simplicity
                 totalOrders += orders.size();
                 
                 // 4. Simulate order execution

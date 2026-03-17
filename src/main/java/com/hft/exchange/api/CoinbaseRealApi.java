@@ -15,6 +15,8 @@ import java.net.http.HttpResponse;
 import java.net.http.WebSocket;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -407,6 +409,62 @@ public class CoinbaseRealApi implements MultiExchangeManager.ExchangeApi {
     private void processTrade(JsonObject message) {
         // Process trade data
         logger.debug("Received Coinbase trade for {}", message.get("product_id"));
+    }
+    
+    /**
+     * Get historical rates for a symbol within a date range
+     */
+    public List<Map<String, Object>> getHistoricalRates(String symbol, LocalDate startDate, LocalDate endDate) {
+        try {
+            checkRateLimit();
+            
+            // Coinbase uses candles endpoint for historical data
+            String path = "/products/" + symbol + "/candles";
+            
+            // Convert dates to timestamps (Coinbase uses Unix timestamps)
+            long start = startDate.atStartOfDay(ZoneOffset.UTC).toEpochSecond();
+            long end = endDate.atStartOfDay(ZoneOffset.UTC).toEpochSecond();
+            
+            // Build request with query parameters
+            String url = REST_BASE_URL + path + "?start=" + start + "&end=" + end + "&granularity=86400"; // 1 day granularity
+            
+            HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .header("Accept", "application/json")
+                .GET()
+                .build();
+            
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            
+            if (response.statusCode() == 200) {
+                List<Map<String, Object>> rates = new ArrayList<>();
+                
+                // Parse candle data: [timestamp, low, high, open, close, volume]
+                String[][] candles = gson.fromJson(response.body(), String[][].class);
+                
+                for (String[] candle : candles) {
+                    Map<String, Object> rate = new HashMap<>();
+                    rate.put("time", Long.parseLong(candle[0]));
+                    rate.put("low", Double.parseDouble(candle[1]));
+                    rate.put("high", Double.parseDouble(candle[2]));
+                    rate.put("open", Double.parseDouble(candle[3]));
+                    rate.put("close", Double.parseDouble(candle[4]));
+                    rate.put("volume", Double.parseDouble(candle[5]));
+                    rates.add(rate);
+                }
+                
+                logger.info("Retrieved {} historical rates for {} from {} to {}", rates.size(), symbol, startDate, endDate);
+                return rates;
+                
+            } else {
+                logger.error("Failed to get Coinbase historical rates: {} - {}", response.statusCode(), response.body());
+                return Collections.emptyList();
+            }
+            
+        } catch (Exception e) {
+            logger.error("Error getting Coinbase historical rates", e);
+            return Collections.emptyList();
+        }
     }
     
     /**

@@ -64,7 +64,7 @@ public class MarketMakingStrategy implements Strategy {
         lastQuoteTime = now;
         
         // Get current market state
-        long midPrice = orderBook.getMidPrice();
+        long midPrice = orderBook != null ? orderBook.getMidPrice() : 0;
         if (midPrice == 0) {
             return orders; // No market yet
         }

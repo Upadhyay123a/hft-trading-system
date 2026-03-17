@@ -241,9 +241,11 @@ public class MultiAssetPortfolioOptimizer {
                 AssetData data2 = assetDataMap.get(asset2);
                 
                 // Calculate correlation using historical returns
-                double correlation = calculateCorrelation(data1.returns, data2.returns);
-                double volatility1 = calculateVolatility(data1.returns);
-                double volatility2 = calculateVolatility(data2.returns);
+                double[] returns1 = data1.returns.stream().mapToDouble(Double::doubleValue).toArray();
+                double[] returns2 = data2.returns.stream().mapToDouble(Double::doubleValue).toArray();
+                double correlation = calculateCorrelation(returns1, returns2);
+                double volatility1 = calculateVolatility(returns1);
+                double volatility2 = calculateVolatility(returns2);
                 
                 double covariance = correlation * volatility1 * volatility2;
                 covarianceMatrix.setCovariance(i, j, covariance);

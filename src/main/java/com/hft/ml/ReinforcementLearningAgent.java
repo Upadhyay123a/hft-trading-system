@@ -1,5 +1,6 @@
 package com.hft.ml;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -473,5 +474,68 @@ public class ReinforcementLearningAgent {
      */
     public double getAverageReward() {
         return totalEpisodes > 0 ? totalReward / totalEpisodes : 0.0;
+    }
+    
+    /**
+     * Get trained model for persistence
+     */
+    public TrainedModel getModel() {
+        return new TrainedModel(this);
+    }
+    
+    /**
+     * Load model from persistence
+     */
+    public void loadModel(TrainedModel model) {
+        if (model != null) {
+            this.loadQTable(model.qTable);
+            this.currentEpsilon = model.epsilon;
+            this.totalEpisodes = model.totalEpisodes;
+            this.totalReward = model.totalReward;
+            this.isTrained = model.isTrained;
+        }
+    }
+    
+    /**
+     * Trained Model for persistence
+     */
+    public static class TrainedModel implements MLModelPersistence.TrainedModel, Serializable {
+        private static final long serialVersionUID = 1L;
+        
+        public final double[][] qTable;
+        public final double epsilon;
+        public final int totalEpisodes;
+        public final double totalReward;
+        public final boolean isTrained;
+        public final String version;
+        public final double accuracy;
+        
+        public TrainedModel(ReinforcementLearningAgent agent) {
+            this.qTable = new double[agent.qTable.length][agent.qTable[0].length];
+            for (int i = 0; i < agent.qTable.length; i++) {
+                System.arraycopy(agent.qTable[i], 0, this.qTable[i], 0, agent.qTable[i].length);
+            }
+            this.epsilon = agent.currentEpsilon;
+            this.totalEpisodes = agent.totalEpisodes;
+            this.totalReward = agent.totalReward;
+            this.isTrained = agent.isTrained;
+            this.version = "1.0";
+            this.accuracy = agent.getAverageReward(); // Use average reward as accuracy metric
+        }
+        
+        @Override
+        public double getAccuracy() {
+            return accuracy;
+        }
+        
+        @Override
+        public String getVersion() {
+            return version;
+        }
+        
+        @Override
+        public boolean isReady() {
+            return isTrained && qTable != null && qTable.length > 0;
+        }
     }
 }

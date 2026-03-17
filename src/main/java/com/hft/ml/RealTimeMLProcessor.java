@@ -578,21 +578,21 @@ public class RealTimeMLProcessor {
     private void loadExistingModels() {
         try {
             // Load regime classifier
-            MarketRegimeClassifier.TrainedModel regimeModel = modelPersistence.loadModel("regime_classifier");
+            MarketRegimeClassifier.TrainedModel regimeModel = (MarketRegimeClassifier.TrainedModel) modelPersistence.loadModel("regime_classifier");
             if (regimeModel != null) {
                 regimeClassifier.loadModel(regimeModel);
                 logger.info("Loaded regime classifier model");
             }
             
             // Load LSTM predictor
-            LSTMPricePredictor.TrainedModel lstmModel = modelPersistence.loadModel("lstm_predictor");
+            LSTMPricePredictor.TrainedModel lstmModel = (LSTMPricePredictor.TrainedModel) modelPersistence.loadModel("lstm_predictor");
             if (lstmModel != null) {
                 lstmPredictor.loadModel(lstmModel);
                 logger.info("Loaded LSTM predictor model");
             }
             
             // Load RL agent
-            ReinforcementLearningAgent.TrainedModel rlModel = modelPersistence.loadModel("rl_agent");
+            ReinforcementLearningAgent.TrainedModel rlModel = (ReinforcementLearningAgent.TrainedModel) modelPersistence.loadModel("rl_agent");
             if (rlModel != null) {
                 rlAgent.loadModel(rlModel);
                 logger.info("Loaded RL agent model");

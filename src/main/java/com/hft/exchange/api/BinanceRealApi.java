@@ -16,6 +16,8 @@ import java.net.http.HttpResponse;
 import java.net.http.WebSocket;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -477,6 +479,46 @@ public class BinanceRealApi implements MultiExchangeManager.ExchangeApi {
      */
     private void processBalanceUpdate(JsonObject message) {
         logger.info("Balance update received: {}", message);
+    }
+    
+    /**
+     * Get historical klines (candlestick data)
+     */
+    public List<List<Object>> getHistoricalKlines(String symbol, String interval, 
+                                                 LocalDate startDate, LocalDate endDate) {
+        try {
+            checkRateLimit();
+            
+            Map<String, String> params = new HashMap<>();
+            params.put("symbol", symbol);
+            params.put("interval", interval);
+            params.put("startTime", String.valueOf(startDate.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()));
+            params.put("endTime", String.valueOf(endDate.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()));
+            params.put("limit", "1000"); // Max limit per request
+            
+            String queryString = buildQueryString(params);
+            String url = REST_BASE_URL + "/api/v3/klines?" + queryString;
+            
+            HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .GET()
+                .build();
+            
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            
+            if (response.statusCode() == 200) {
+                List<List<Object>> klines = gson.fromJson(response.body(), List.class);
+                logger.info("Retrieved {} klines for {} from {} to {}", klines.size(), symbol, startDate, endDate);
+                return klines;
+            } else {
+                logger.error("Failed to get historical klines: {} - {}", response.statusCode(), response.body());
+                throw new RuntimeException("Failed to fetch historical klines: " + response.body());
+            }
+            
+        } catch (Exception e) {
+            logger.error("Error getting historical klines for {}", symbol, e);
+            throw new RuntimeException("Error fetching historical klines", e);
+        }
     }
     
     /**

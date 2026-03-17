@@ -153,6 +153,20 @@ public class OptimizedOrderBook {
     }
     
     /**
+     * Get best bid price - O(1) operation
+     */
+    public long getBestBid() {
+        return bestBid;
+    }
+    
+    /**
+     * Get best ask price - O(1) operation
+     */
+    public long getBestAsk() {
+        return bestAsk == Long.MAX_VALUE ? 0 : bestAsk;
+    }
+    
+    /**
      * Market order execution - O(k) where k is price levels to consume
      */
     public List<Trade> executeMarketOrder(Order marketOrder) {
