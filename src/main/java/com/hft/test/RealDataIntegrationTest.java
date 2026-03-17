@@ -154,7 +154,7 @@ public class RealDataIntegrationTest {
                 bid.symbolId = 1;
                 bid.price = 50000000L - (i * 100); // Decreasing price for bids
                 bid.quantity = 1000;
-                bid.isBuy = true;
+                bid.side = 0; // Buy
                 orderBook.addOrder(bid);
                 
                 Order ask = new Order();
@@ -162,7 +162,7 @@ public class RealDataIntegrationTest {
                 ask.symbolId = 1;
                 ask.price = 50000000L + (i * 100); // Increasing price for asks
                 ask.quantity = 1000;
-                ask.isBuy = false;
+                ask.side = 1; // Sell
                 orderBook.addOrder(ask);
             }
             
@@ -183,8 +183,8 @@ public class RealDataIntegrationTest {
             logger.info("   - Order book state available: {}", bookState.length() > 0 ? "Yes" : "No");
             
             // Test order matching
-            long spread = bestAsk - bestBid;
-            if (spread <= 0) {
+            long orderBookSpread = bestAsk - bestBid;
+            if (orderBookSpread <= 0) {
                 throw new RuntimeException("Invalid spread");
             }
             
@@ -195,7 +195,7 @@ public class RealDataIntegrationTest {
             logger.info("   - Orders processed: {} ({:.0f} orders/sec)", orderCount * 2, (orderCount * 2) / totalTime);
             logger.info("   - Best bid: {}", bestBid);
             logger.info("   - Best ask: {}", bestAsk);
-            logger.info("   - Spread: {} ({:.4f}%)", spread, (double)spread / 50000000L * 100);
+            logger.info("   - Spread: {} ({:.4f}%)", orderBookSpread, (double)orderBookSpread / 50000000L * 100);
             logger.info("   - Order book state: Available");
             logger.info("   - Total time: {:.3f} seconds", totalTime);
             
