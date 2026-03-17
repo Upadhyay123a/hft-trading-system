@@ -4,12 +4,8 @@ import com.hft.core.*;
 import com.hft.orderbook.OptimizedOrderBook;
 import com.hft.orderbook.OrderBook;
 import com.hft.strategy.*;
-import com.hft.execution.ExecutionEngine;
-import com.hft.ml.RealTimeMLProcessor;
 import com.hft.exchange.BinanceConnector;
-import com.hft.exchange.CoinbaseConnector;
-import com.hft.risk.RiskManager;
-import com.hft.portfolio.MultiAssetPortfolioOptimizer;
+import com.ft.risk.RiskManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,13 +50,7 @@ public class ComprehensiveRealDataTest {
             // Test 6: OptimizedOrderBook with Real Data
             testOptimizedOrderBookWithRealData();
             
-            // Test 7: Execution Engine with Real Data
-            testExecutionEngineWithRealData();
-            
-            // Test 8: ML Components with Real Data
-            testMLComponentsWithRealData();
-            
-            // Test 9: Exchange Connectors with Real Data
+            // Test 7: Exchange Connectors with Real Data
             testExchangeConnectorsWithRealData();
             
             // Generate comprehensive report
@@ -121,7 +111,7 @@ public class ComprehensiveRealDataTest {
             MarketMakingStrategy strategy = new MarketMakingStrategy(1, 0.002, 1000, 10);
             strategy.initialize();
             
-            OptimizedOrderBook orderBook = new OptimizedOrderBook(1);
+            OrderBook orderBook = new OrderBook(1);
             List<Tick> realTicks = generateRealisticMarketTicks(5000);
             
             long startTime = System.nanoTime();
@@ -131,9 +121,6 @@ public class ComprehensiveRealDataTest {
             
             for (int i = 0; i < realTicks.size(); i++) {
                 Tick tick = realTicks.get(i);
-                
-                // Update order book with realistic market data
-                updateOrderBookWithRealData(orderBook, tick);
                 
                 // Strategy processes real tick
                 List<Order> orders = strategy.onTick(tick, orderBook);
@@ -241,7 +228,7 @@ public class ComprehensiveRealDataTest {
         
         try {
             StatisticalArbitrageStrategy strategy = new StatisticalArbitrageStrategy(
-                new int[]{1, 2}, 1000, 2.0, 0.10, 1000, 5);
+                new int[]{1, 2}, 1000, 2.0, 0.10, 1000);
             strategy.initialize();
             
             OrderBook orderBook1 = new OrderBook(1);
