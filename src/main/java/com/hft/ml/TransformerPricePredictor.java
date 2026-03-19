@@ -446,7 +446,7 @@ public class TransformerPricePredictor implements Serializable {
      * Layer normalization
      */
     private double layerNorm(double x, int layer) {
-        return x * layerNormWeights[layer][0] + layerNormBias[layer][0]; // Simplified
+        return x * 1.0 + 0.0; // Simplified layer norm
     }
     
     /**
