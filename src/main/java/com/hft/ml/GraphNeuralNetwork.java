@@ -115,7 +115,7 @@ public class GraphNeuralNetwork implements Serializable {
         readoutBias = new double[2];
         
         // Attention weights
-        attentionWeights = new double[NUM_LAYERS][NUM_HEADS][EMBEDDING_DIM];
+        attentionWeights = new double[NUM_LAYERS][NUM_HEADS];
         attentionBias = new double[NUM_LAYERS][NUM_HEADS];
         
         // Initialize all weights with Xavier initialization
@@ -140,9 +140,7 @@ public class GraphNeuralNetwork implements Serializable {
             }
             
             for (int head = 0; head < NUM_HEADS; head++) {
-                for (int i = 0; i < EMBEDDING_DIM; i++) {
-                    attentionWeights[layer][head][i] = random.nextGaussian() * scale;
-                }
+                attentionWeights[layer][head] = random.nextGaussian() * scale;
                 attentionBias[layer][head] = 0;
             }
         }
