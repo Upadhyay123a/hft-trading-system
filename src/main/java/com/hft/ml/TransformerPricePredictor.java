@@ -123,7 +123,7 @@ public class TransformerPricePredictor implements Serializable {
         attentionBias = new double[NUM_LAYERS][NUM_HEADS];
         feedForwardBias1 = new double[NUM_LAYERS][D_FF];
         feedForwardBias2 = new double[NUM_LAYERS][D_MODEL];
-        layerNormBias = new double[NUM_LAYERS][D_MODEL];
+        layerNormBias = new double[NUM_LAYERS];
         outputBias = new double[2];
     }
     
