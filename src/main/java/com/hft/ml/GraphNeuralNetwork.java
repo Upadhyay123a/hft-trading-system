@@ -107,20 +107,16 @@ public class GraphNeuralNetwork implements Serializable {
      * Initialize network parameters
      */
     private void initializeNetwork() {
-        // Message passing weights
-        messageWeights = new double[NUM_LAYERS][];
-        messageBias = new double[NUM_LAYERS][];
-        
-        // Update weights
-        updateWeights = new double[NUM_LAYERS][];
-        updateBias = new double[NUM_LAYERS][];
-        
-        // Readout weights
-        readoutWeights = new double[HIDDEN_DIM][];
-        readoutBias = new double[HIDDEN_DIM];
+        // Initialize neural network parameters
+        messageWeights = new double[NUM_LAYERS][EMBEDDING_DIM][HIDDEN_DIM];
+        messageBias = new double[NUM_LAYERS][HIDDEN_DIM];
+        updateWeights = new double[NUM_LAYERS][HIDDEN_DIM][EMBEDDING_DIM];
+        updateBias = new double[NUM_LAYERS][EMBEDDING_DIM];
+        readoutWeights = new double[HIDDEN_DIM][2];
+        readoutBias = new double[2];
         
         // Attention weights
-        attentionWeights = new double[NUM_LAYERS][NUM_HEADS];
+        attentionWeights = new double[NUM_LAYERS][NUM_HEADS][EMBEDDING_DIM];
         attentionBias = new double[NUM_LAYERS][NUM_HEADS];
         
         // Initialize all weights with Xavier initialization
