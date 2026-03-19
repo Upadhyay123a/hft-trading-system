@@ -462,17 +462,16 @@ public class HardwareAcceleration implements Serializable {
                                                               String operationType) {
             long startTime = System.nanoTime();
             
-            AccelerationType finalHardwareType = hardwareType;
-            
-            if (finalHardwareType == AccelerationType.GPU) {
-                // No GPU available, fallback to SIMD/Multi-core
-                finalHardwareType = AccelerationType.SIMD;
+            // Determine actual hardware type to use
+            AccelerationType actualHardwareType = hardwareType;
+            if (actualHardwareType == AccelerationType.GPU) {
+                actualHardwareType = AccelerationType.SIMD; // No GPU fallback
+            }
+            if (actualHardwareType == AccelerationType.FPGA) {
+                actualHardwareType = AccelerationType.MULTI_CORE; // No FPGA fallback
             }
             
-            if (finalHardwareType == AccelerationType.FPGA) {
-                // No FPGA available, fallback to SIMD/Multi-core
-                finalHardwareType = AccelerationType.MULTI_CORE;
-            }
+            AccelerationType finalHardwareType = actualHardwareType;
             
             switch (finalHardwareType) {
                 case SIMD:
