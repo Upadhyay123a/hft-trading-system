@@ -356,8 +356,8 @@ public class HardwareAcceleration implements Serializable {
             hasGPU,
             hasSIMD,
             hasMultiCore,
-            multiCoreOperations.get(),
-            gpuOperations.get(),
+            0, // fpgaOperations (not used)
+            0, // gpuOperations (not used)
             simdOperations.get(),
             totalOperations.get()
         );
