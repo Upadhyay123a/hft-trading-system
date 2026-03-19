@@ -301,14 +301,14 @@ public class ComprehensiveBacktestingFramework implements Serializable {
                 double volume = 10000 + random.nextDouble() * 90000;
                 
                 // Add some trend and volatility
-                double trend = Math.sin(current.toEpochDay() * 0.1) * 0.01;
+                double trend = Math.sin(current.toLocalDate().toEpochDay() * 0.1) * 0.01;
                 double volatility = random.nextGaussian() * 0.002;
                 
                 bidPrice = bidPrice * (1 + trend + volatility);
                 askPrice = askPrice * (1 + trend + volatility);
                 
                 MarketDataPoint dataPoint = new MarketDataPoint(
-                    current.toEpochSecond(LocalDateTime.now()) * 1000,
+                    current.toEpochSecond(java.time.ZoneOffset.UTC) * 1000,
                     symbol, bidPrice, askPrice, bidSize, askSize, volume
                 );
                 
@@ -534,9 +534,14 @@ public class ComprehensiveBacktestingFramework implements Serializable {
     /**
      * Calculate standard deviation
      */
-    private double calculateStandardDeviation(DoubleStream values) {
-        double mean = values.average().orElse(0.0);
-        double variance = values.map(v -> Math.pow(v - mean, 2)).average().orElse(0.0);
+    private double calculateStandardDeviation(java.util.stream.DoubleStream values) {
+        double[] valueArray = values.toArray();
+        if (valueArray.length == 0) return 0;
+        
+        double mean = java.util.Arrays.stream(valueArray).average().orElse(0.0);
+        double variance = java.util.Arrays.stream(valueArray)
+            .map(v -> Math.pow(v - mean, 2))
+            .average().orElse(0.0);
         return Math.sqrt(variance);
     }
     
@@ -629,7 +634,7 @@ public class ComprehensiveBacktestingFramework implements Serializable {
             Arrays.toString(config.symbols),
             config.startDate.format(DateTimeFormatter.ISO_LOCAL_DATE),
             config.endDate.format(DateTimeFormatter.ISO_LOCAL_DATE),
-            Arrays.stream(config.symbols).mapToDouble(s -> symbolData.get(s).size()).mapToObj(d -> d.toString()).toArray()
+            Arrays.stream(config.symbols).mapToDouble(s -> symbolData.get(s).size()).mapToObj(d -> Double.toString(d)).toArray(String[]::new)
         );
     }
     
