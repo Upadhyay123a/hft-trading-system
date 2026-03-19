@@ -71,18 +71,26 @@ public class EnsembleLearningSystem implements Serializable {
             try {
                 switch (modelType) {
                     case TRANSFORMER:
-                        return ((TransformerPricePredictor) model).predict(features)[0];
+                        TransformerPricePredictor.PredictionResult transformerResult = 
+                            ((TransformerPricePredictor) model).predict(features);
+                        return transformerResult.prediction;
                     case TCN:
-                        return ((TemporalConvolutionalNetwork) model).predict(features)[0];
+                        TemporalConvolutionalNetwork.TCNPrediction tcnResult = 
+                            ((TemporalConvolutionalNetwork) model).predict(features);
+                        return tcnResult.prediction;
                     case LSTM:
-                        return ((LSTMPricePredictor) model).predict(features)[0];
+                        LSTMPricePredictor.LSTMPrediction lstmResult = 
+                            ((LSTMPricePredictor) model).predict(features);
+                        return lstmResult.prediction;
                     case GNN:
-                        return ((GraphNeuralNetwork) model).predict(0)[0]; // Simplified
+                        GraphNeuralNetwork.GraphPrediction gnnResult = 
+                            ((GraphNeuralNetwork) model).predict(features);
+                        return gnnResult.prediction;
                     default:
                         return 0.0;
                 }
             } catch (Exception e) {
-                logger.warn("Prediction failed for model: {}", modelId, e);
+                logger.error("Prediction failed for model type: {}", modelType, e);
                 return 0.0;
             }
         }
