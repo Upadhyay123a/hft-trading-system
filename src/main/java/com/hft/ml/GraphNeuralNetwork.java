@@ -71,9 +71,7 @@ public class GraphNeuralNetwork implements Serializable {
         SENTIMENT,       // Sentiment node
         ECONOMIC,        // Economic indicator
         CORRELATION      // Correlation node
-        LIQUIDITY        // Liquidity provider
         ARBITRAGE       // Arbitrage opportunity
-    }
     
     public GraphNeuralNetwork() {
         this(0.001); // Default learning rate
