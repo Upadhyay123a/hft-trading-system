@@ -43,7 +43,7 @@ public class GraphNeuralNetwork implements Serializable {
     
     // Attention mechanism for graph
     private double[][] attentionWeights;     // Graph attention weights
-    private double[] attentionBias;       // Graph attention bias
+    private double[][] attentionBias;       // Graph attention bias
     
     // Pre-allocated buffers for inference
     private double[][] messageBuffer;

@@ -25,7 +25,7 @@ public class EnsembleLearningSystem implements Serializable {
     // Ensemble configuration
     private final EnsembleType ensembleType;
     private final List<ModelWrapper> models;
-    private final double[] modelWeights;
+    private double[] modelWeights;
     private final Map<String, Double> modelPerformance;
     
     // Dynamic selection parameters
@@ -98,13 +98,13 @@ public class EnsembleLearningSystem implements Serializable {
             try {
                 switch (modelType) {
                     case TRANSFORMER:
-                        TransformerPricePredictor.PredictionResult pred = 
+                        TransformerPricePredictor.PredictionResult transformerPred = 
                             ((TransformerPricePredictor) model).predict(features);
-                        return pred.price * pred.confidence;
+                        return transformerPred.price * transformerPred.confidence;
                     case TCN:
-                        TemporalConvolutionalNetwork.TCNPrediction pred = 
+                        TemporalConvolutionalNetwork.TCNPrediction tcnPred = 
                             ((TemporalConvolutionalNetwork) model).predict(features);
-                        return pred.prediction * pred.confidence;
+                        return tcnPred.prediction * tcnPred.confidence;
                     case LSTM:
                         double[] lstmResult = ((LSTMPricePredictor) model).predict(features);
                         return lstmResult[0] * lstmResult[1]; // prediction * confidence
@@ -305,10 +305,10 @@ public class EnsembleLearningSystem implements Serializable {
             case DYNAMIC_SELECTION:
                 // Select best performing model
                 ModelWrapper bestModel = models.stream()
-                    .max(Comparator.comparing(m -> m.recententPerformance))
+                    .max(Comparator.comparing(m -> m.recentPerformance))
                     .orElse(models.get(0));
                 prediction = bestModel.predict(features);
-                confidence = bestModel.recententPerformance;
+                confidence = bestModel.recentPerformance;
                 individualPredictions.put(bestModel.modelId, prediction);
                 break;
                 
@@ -479,7 +479,7 @@ public class EnsembleLearningSystem implements Serializable {
      */
     public String getBestModel() {
         return models.stream()
-            .max(Comparator.comparing(m -> m.recententPerformance))
+            .max(Comparator.comparing(m -> m.recentPerformance))
             .map(m -> m.modelId)
             .orElse(null);
     }
@@ -489,7 +489,7 @@ public class EnsembleLearningSystem implements Serializable {
      */
     public List<String> getModelRanking() {
         return models.stream()
-            .sorted((a, b) -> Double.compare(b.recentPerformance, a.recententPerformance))
+            .sorted((a, b) -> Double.compare(b.recentPerformance, a.recentPerformance))
             .map(m -> m.modelId)
             .collect(java.util.stream.Collectors.toList());
     }

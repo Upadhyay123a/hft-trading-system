@@ -347,6 +347,13 @@ public class LSTMPricePredictor {
     }
     
     /**
+     * Check if model is trained
+     */
+    public boolean isTrained() {
+        return isTrained;
+    }
+    
+    /**
      * Get last prediction
      */
     public double getLastPrediction() {
