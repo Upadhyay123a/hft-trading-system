@@ -808,12 +808,10 @@ public class ComprehensiveIntegrationTest {
             cpuUsage = summary.memoryUsagePercent; // Using memory as proxy for system load
             memoryUsage = summary.memoryUsagePercent;
             networkThroughput = summary.operationsPerSecond; // Using ops/sec as throughput metric
+            double avgLatency = summary.avgLatencyMs; // Extract average latency from summary
             
-            if (i == 0) { // Only log once to avoid spam
-                logger.info("   - Performance metrics collection working");
-                logger.info("   - CPU usage: {:.1f}%", cpuUsage * 100);
-                logger.info("   - Memory usage: {:.1f}%", memoryUsage * 100);
-                logger.info("   - Operations/sec: {:.1f}", networkThroughput);
+            // Calculate monitoring duration
+            long monitoringTime = System.nanoTime() - startTime;
             
             result.setSuccess(true);
             testResults.put("Performance Monitoring", result);
