@@ -462,24 +462,26 @@ public class HardwareAcceleration implements Serializable {
                                                               String operationType) {
             long startTime = System.nanoTime();
             
-            if (hardwareType == AccelerationType.GPU) {
+            AccelerationType finalHardwareType = hardwareType;
+            
+            if (finalHardwareType == AccelerationType.GPU) {
                 // No GPU available, fallback to SIMD/Multi-core
-                hardwareType = AccelerationType.SIMD;
+                finalHardwareType = AccelerationType.SIMD;
             }
             
-            if (hardwareType == AccelerationType.FPGA) {
+            if (finalHardwareType == AccelerationType.FPGA) {
                 // No FPGA available, fallback to SIMD/Multi-core
-                hardwareType = AccelerationType.MULTI_CORE;
+                finalHardwareType = AccelerationType.MULTI_CORE;
             }
             
-            switch (hardwareType) {
+            switch (finalHardwareType) {
                 case SIMD:
                     return simdAccelerator.executeVectorizedOperation(input, operationType)
-                        .thenApply(result -> new HardwareResult(result[0], hardwareType, System.nanoTime() - startTime));
+                        .thenApply(result -> new HardwareResult(result[0], finalHardwareType, System.nanoTime() - startTime));
                 case MULTI_CORE:
                     return CompletableFuture.supplyAsync(() -> {
                         double result = executeMultiCoreOperation(input, operationType);
-                        return new HardwareResult(result, hardwareType, System.nanoTime() - startTime);
+                        return new HardwareResult(result, finalHardwareType, System.nanoTime() - startTime);
                     });
                 default:
                     return CompletableFuture.completedFuture(new HardwareResult(input[0], AccelerationType.MULTI_CORE, System.nanoTime() - startTime));
