@@ -71,7 +71,7 @@ public class GraphNeuralNetwork implements Serializable {
         SENTIMENT,       // Sentiment node
         ECONOMIC,        // Economic indicator
         CORRELATION      // Correlation node
-        ARBITRAGE       // Arbitrage opportunity
+        ARBITRAGE        // Arbitrage opportunity
     }
     
     public GraphNeuralNetwork() {
