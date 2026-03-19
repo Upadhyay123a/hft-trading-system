@@ -551,29 +551,29 @@ public class ComprehensiveBacktestingFramework implements Serializable {
         int profitableTrades = 0;
         int totalTrades = 0;
         
-        Map<String, Double> strategyPnL = new HashMap<>();
-        Map<String, PerformanceMetrics> performanceMetrics = new HashMap<>();
+        Map<String, Double> strategyPnLMap = new HashMap<>();
+        Map<String, PerformanceMetrics> performanceMetricsMap = new HashMap<>();
         
         // Calculate strategy performance
         for (StrategyExecutor strategy : strategies.values()) {
-            double strategyPnL = 0;
+            double strategyPnLValue = 0;
             int strategyTrades = 0;
             int strategyWins = 0;
             
             Map<String, Position> positions = strategy.getPositions();
             for (Position position : positions.values()) {
-                strategyPnL += position.getTotalPnL();
+                strategyPnLValue += position.getTotalPnL();
             }
             
             // Calculate metrics (simplified)
             strategyTrades = 100; // Placeholder
             strategyWins = (int) (strategyTrades * 0.55); // Placeholder
             
-            strategyPnL.put(strategy.getStrategyName(), strategyPnL);
-            performanceMetrics.put(strategy.getStrategyName(), 
+            strategyPnLMap.put(strategy.getStrategyName(), strategyPnLValue);
+            performanceMetricsMap.put(strategy.getStrategyName(), 
                 new PerformanceMetrics(
                     strategy.getStrategyName(),
-                    strategyPnL,
+                    strategyPnLValue,
                     strategyTrades,
                     (double) strategyWins / strategyTrades,
                     1000, // Placeholder
@@ -582,23 +582,30 @@ public class ComprehensiveBacktestingFramework implements Serializable {
                     config.latencyMs
                 ));
             
-            totalPnL += strategyPnL;
-            maxPnL = Math.max(maxPnL, strategyPnL);
-            minPnL = Math.min(minPnL, strategyPnL);
+            totalPnL += strategyPnLValue;
+            maxPnL = Math.max(maxPnL, strategyPnLValue);
+            minPnL = Math.min(minPnL, strategyPnLValue);
             profitableTrades += strategyWins;
             totalTrades += strategyTrades;
         }
         
         // Calculate overall metrics
-        results.totalPnL = totalPnL;
-        results.maxDrawdown = maxPnL > 0 ? (maxPnL - minPnL) / maxPnL : 0;
-        results.winRate = totalTrades > 0 ? (double) profitableTrades / totalTrades : 0;
-        results.totalTrades = totalTrades;
-        results.strategyPnL = strategyPnL;
-        results.performanceMetrics = new ArrayList<>(performanceMetrics.values());
+        double finalTotalPnL = totalPnL;
+        double finalMaxDrawdown = maxPnL > 0 ? (maxPnL - minPnL) / maxPnL : 0;
+        double finalWinRate = totalTrades > 0 ? (double) profitableTrades / totalTrades : 0;
+        int finalTotalTrades = totalTrades;
         
         // Calculate Sharpe ratio (simplified)
-        results.sharpe = totalPnL > 0 ? totalPnL / (results.maxDrawdown + 1) : 0;
+        double finalSharpeRatio = finalTotalPnL > 0 ? finalTotalPnL / (finalMaxDrawdown + 1) : 0;
+        
+        // Update results
+        results.totalPnL = finalTotalPnL;
+        results.maxDrawdown = finalMaxDrawdown;
+        results.winRate = finalWinRate;
+        results.totalTrades = finalTotalTrades;
+        results.strategyPnL = strategyPnLMap;
+        results.performanceMetrics = new ArrayList<>(performanceMetricsMap.values());
+        results.sharpeRatio = finalSharpeRatio;
     }
     
     /**
