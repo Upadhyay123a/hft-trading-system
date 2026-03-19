@@ -318,6 +318,8 @@ public class GraphNeuralNetwork implements Serializable {
             for (int j = 0; j < 2; j++) {
                 output[j] += embedding[i] * readoutWeights[i][j];
             }
+        }
+        for (int j = 0; j < 2; j++) {
             output[j] += readoutBias[j];
         }
         
