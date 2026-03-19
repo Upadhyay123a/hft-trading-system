@@ -373,6 +373,8 @@ public class TemporalConvolutionalNetwork implements Serializable {
             for (int j = 0; j < OUTPUT_CHANNELS; j++) {
                 outputWeights[i][j] -= learningRate * pooled[i] * outputGradients[j] * 0.001;
             }
+        }
+        for (int j = 0; j < OUTPUT_CHANNELS; j++) {
             outputBias[j] -= learningRate * outputGradients[j] * 0.001;
         }
     }
