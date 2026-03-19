@@ -82,9 +82,9 @@ public class EnsembleLearningSystem implements Serializable {
                         double[] lstmResult = ((LSTMPricePredictor) model).predict(features);
                         return lstmResult[0]; // predictedPrice
                     case GNN:
-                        GraphNeuralNetwork.GraphPrediction gnnResult = 
-                            ((GraphNeuralNetwork) model).predict(features);
-                        return gnnResult.prediction;
+                        // GNN requires different input format, use default for now
+                        logger.warn("GNN prediction not compatible with double[] features, using fallback");
+                        return 0.0;
                     default:
                         return 0.0;
                 }
