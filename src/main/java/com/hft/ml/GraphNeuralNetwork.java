@@ -257,6 +257,8 @@ public class GraphNeuralNetwork implements Serializable {
                 for (int j = 0; j < HIDDEN_DIM; j++) {
                     transformed[j] += neighborEmbedding[i] * messageWeights[layer][i][j];
                 }
+            }
+            for (int j = 0; j < HIDDEN_DIM; j++) {
                 transformed[j] += messageBias[layer][j];
             }
             
