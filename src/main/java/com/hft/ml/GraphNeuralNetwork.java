@@ -72,6 +72,7 @@ public class GraphNeuralNetwork implements Serializable {
         ECONOMIC,        // Economic indicator
         CORRELATION      // Correlation node
         ARBITRAGE       // Arbitrage opportunity
+    }
     
     public GraphNeuralNetwork() {
         this(0.001); // Default learning rate
