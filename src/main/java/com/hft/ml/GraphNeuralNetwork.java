@@ -46,10 +46,10 @@ public class GraphNeuralNetwork implements Serializable {
     private double[] attentionBias;       // Graph attention bias
     
     // Pre-allocated buffers for inference
-    private final double[][] messageBuffer;
-    private final double[][] updateBuffer;
-    private final double[][] attentionBuffer;
-    private final double[] outputBuffer;
+    private double[][] messageBuffer;
+    private double[][] updateBuffer;
+    private double[][] attentionBuffer;
+    private double[] outputBuffer;
     
     // Training state
     private final List<GraphTrainingExample> trainingData;
@@ -70,7 +70,7 @@ public class GraphNeuralNetwork implements Serializable {
         REGIME,          // Market regime (trending, ranging, volatile)
         SENTIMENT,       // Sentiment node
         ECONOMIC,        // Economic indicator
-        CORRELATION      // Correlation node
+        CORRELATION,      // Correlation node
         ARBITRAGE        // Arbitrage opportunity
     }
     
