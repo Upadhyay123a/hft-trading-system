@@ -151,9 +151,8 @@ public class GraphNeuralNetwork implements Serializable {
                 readoutWeights[i][j] = random.nextGaussian() * scale;
             }
         }
-        
-        for (int i = 0; i < HIDDEN_DIM; i++) {
-            readoutBias[i] = 0;
+        for (int j = 0; j < 2; j++) {
+            readoutBias[j] = 0;
         }
     }
     
