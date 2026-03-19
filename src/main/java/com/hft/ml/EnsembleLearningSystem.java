@@ -73,15 +73,14 @@ public class EnsembleLearningSystem implements Serializable {
                     case TRANSFORMER:
                         TransformerPricePredictor.PredictionResult transformerResult = 
                             ((TransformerPricePredictor) model).predict(features);
-                        return transformerResult.prediction;
+                        return transformerResult.price;
                     case TCN:
                         TemporalConvolutionalNetwork.TCNPrediction tcnResult = 
                             ((TemporalConvolutionalNetwork) model).predict(features);
                         return tcnResult.prediction;
                     case LSTM:
-                        LSTMPricePredictor.LSTMPrediction lstmResult = 
-                            ((LSTMPricePredictor) model).predict(features);
-                        return lstmResult.prediction;
+                        double[] lstmResult = ((LSTMPricePredictor) model).predict(features);
+                        return lstmResult[0]; // predictedPrice
                     case GNN:
                         GraphNeuralNetwork.GraphPrediction gnnResult = 
                             ((GraphNeuralNetwork) model).predict(features);
