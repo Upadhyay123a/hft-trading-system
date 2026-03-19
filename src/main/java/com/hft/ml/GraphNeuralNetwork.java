@@ -122,14 +122,6 @@ public class GraphNeuralNetwork implements Serializable {
         double scale = Math.sqrt(2.0 / EMBEDDING_DIM);
         
         for (int layer = 0; layer < NUM_LAYERS; layer++) {
-            messageWeights[layer] = new double[EMBEDDING_DIM][HIDDEN_DIM];
-            messageBias[layer] = new double[HIDDEN_DIM];
-            updateWeights[layer] = new double[HIDDEN_DIM][EMBEDDING_DIM];
-            updateBias[layer] = new double[EMBEDDING_DIM];
-            attentionWeights[layer] = new double[NUM_HEADS];
-            attentionBias[layer] = new double[NUM_HEADS];
-            
-            // Initialize weights
             for (int i = 0; i < EMBEDDING_DIM; i++) {
                 for (int j = 0; j < HIDDEN_DIM; j++) {
                     messageWeights[layer][i][j] = random.nextGaussian() * scale;
@@ -141,11 +133,16 @@ public class GraphNeuralNetwork implements Serializable {
             
             for (int i = 0; i < HIDDEN_DIM; i++) {
                 messageBias[layer][i] = 0;
+            }
+            
+            for (int i = 0; i < EMBEDDING_DIM; i++) {
                 updateBias[layer][i] = 0;
             }
             
             for (int head = 0; head < NUM_HEADS; head++) {
-                attentionWeights[layer][head] = random.nextGaussian() * scale;
+                for (int i = 0; i < EMBEDDING_DIM; i++) {
+                    attentionWeights[layer][head][i] = random.nextGaussian() * scale;
+                }
                 attentionBias[layer][head] = 0;
             }
         }
