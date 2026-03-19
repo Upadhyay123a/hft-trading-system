@@ -30,24 +30,24 @@ public class TransformerPricePredictor implements Serializable {
     private static final double DROPOUT_RATE = 0.1;      // Dropout rate
     
     // Network parameters
-    private final double[][][] queryWeights;    // Query projection weights
-    private final double[][][] keyWeights;      // Key projection weights
-    private final double[][][] valueWeights;    // Value projection weights
-    private final double[][][] attentionWeights; // Attention weights
-    private final double[][][] feedForwardWeights1; // FF layer 1 weights
-    private final double[][][] feedForwardWeights2; // FF layer 2 weights
-    private final double[][] layerNormWeights;  // Layer normalization weights
-    private final double[][] outputWeights;     // Output projection weights
+    private double[][][] queryWeights;    // Query projection weights
+    private double[][][] keyWeights;      // Key projection weights
+    private double[][][] valueWeights;    // Value projection weights
+    private double[][][] attentionWeights; // Attention weights
+    private double[][][] feedForwardWeights1; // FF layer 1 weights
+    private double[][][] feedForwardWeights2; // FF layer 2 weights
+    private double[][] layerNormWeights;  // Layer normalization weights
+    private double[][] outputWeights;     // Output projection weights
     
     // Bias terms
-    private final double[][] queryBias;
-    private final double[][] keyBias;
-    private final double[][] valueBias;
-    private final double[][] attentionBias;
-    private final double[][] feedForwardBias1;
-    private final double[][] feedForwardBias2;
-    private final double[] layerNormBias;
-    private final double[] outputBias;
+    private double[][] queryBias;
+    private double[][] keyBias;
+    private double[][] valueBias;
+    private double[][] attentionBias;
+    private double[][] feedForwardBias1;
+    private double[][] feedForwardBias2;
+    private double[] layerNormBias;
+    private double[] outputBias;
     
     // Pre-allocated buffers for inference (zero allocation during trading)
     private double[][] inputSequence;
