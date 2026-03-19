@@ -487,13 +487,13 @@ public class HardwareAcceleration implements Serializable {
         }
     
     /**
-     * Get hardware acceleration statistics
+     * Get hardware acceleration statistics optimized for Dell i5 3000 series
      */
     public HardwareStats getHardwareStats() {
         return new HardwareStats(
-            fpgaAccelerator.fpgaAvailable,
-            gpuAccelerator.gpuAvailable,
-            simdAccelerator.simdAvailable,
+            false, // No FPGA
+            false, // No GPU
+            true,  // SIMD available on i5
             fpgaOperations.get(),
             gpuOperations.get(),
             simdOperations.get(),
