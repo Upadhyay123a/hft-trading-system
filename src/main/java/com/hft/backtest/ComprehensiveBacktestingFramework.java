@@ -35,7 +35,7 @@ public class ComprehensiveBacktestingFramework implements Serializable {
     private final Map<String, StrategyExecutor> strategies;
     
     // Performance tracking
-    private final BacktestResults results;
+    private BacktestResults results;
     
     // Simulation state
     private boolean isRunning;
@@ -177,14 +177,14 @@ public class ComprehensiveBacktestingFramework implements Serializable {
      * Backtest results
      */
     public static class BacktestResults implements Serializable {
-        public final double totalPnL;
-        public final double sharpeRatio;
-        public final double maxDrawdown;
-        public final double winRate;
-        public final int totalTrades;
-        public final long executionTime;
-        public final Map<String, Double> strategyPnL;
-        public final List<PerformanceMetrics> performanceMetrics;
+        public double totalPnL;
+        public double sharpeRatio;
+        public double maxDrawdown;
+        public double winRate;
+        public int totalTrades;
+        public long executionTime;
+        public Map<String, Double> strategyPnL;
+        public List<PerformanceMetrics> performanceMetrics;
         
         BacktestResults(double totalPnL, double sharpeRatio, double maxDrawdown, double winRate,
                         int totalTrades, long executionTime, Map<String, Double> strategyPnL,
@@ -355,7 +355,12 @@ public class ComprehensiveBacktestingFramework implements Serializable {
         // Calculate final results
         calculateFinalResults();
         
-        results.executionTime = endTime - startTime;
+        // Create new results object with correct execution time
+        long finalExecutionTime = endTime - startTime;
+        results = new BacktestResults(
+            results.totalPnL, results.sharpeRatio, results.maxDrawdown, results.winRate,
+            results.totalTrades, finalExecutionTime, results.strategyPnL, results.performanceMetrics
+        );
         
         logger.info("Backtest completed in {}ms", results.executionTime);
         logger.info("Final results:\n{}", results);
