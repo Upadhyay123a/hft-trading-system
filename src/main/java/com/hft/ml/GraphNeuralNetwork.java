@@ -34,16 +34,16 @@ public class GraphNeuralNetwork implements Serializable {
     private final Map<Integer, double[]> nodeEmbeddings;
     
     // Neural network parameters
-    private final double[][][] messageWeights;      // Message passing weights
-    private final double[][][] messageBias;          // Message passing bias
-    private final double[][][] updateWeights;       // Node update weights
-    private final double[][][] updateBias;         // Node update bias
-    private final double[][][] readoutWeights;       // Readout weights
-    private final double[] readoutBias;             // Readout bias
+    private double[][][] messageWeights;      // Message passing weights
+    private double[][] messageBias;          // Message passing bias
+    private double[][][] updateWeights;       // Node update weights
+    private double[][] updateBias;         // Node update bias
+    private double[][] readoutWeights;       // Readout weights
+    private double[] readoutBias;             // Readout bias
     
     // Attention mechanism for graph
-    private final double[][][] attentionWeights;     // Graph attention weights
-    private final double[][][] attentionBias;       // Graph attention bias
+    private double[][] attentionWeights;     // Graph attention weights
+    private double[] attentionBias;       // Graph attention bias
     
     // Pre-allocated buffers for inference
     private final double[][] messageBuffer;
