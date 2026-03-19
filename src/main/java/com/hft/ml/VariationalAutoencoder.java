@@ -31,26 +31,26 @@ public class VariationalAutoencoder implements Serializable {
     private static final double EPSILON = 1e-8;           // Numerical stability
     
     // Encoder network parameters
-    private final double[][] encoderWeights1;          // Input -> Hidden
-    private final double[] encoderBias1;               // Hidden bias
-    private final double[][] encoderWeightsMu;         // Hidden -> Latent mean
-    private final double[] encoderBiasMu;              // Latent mean bias
-    private final double[][] encoderWeightsLogVar;     // Hidden -> Latent log variance
-    private final double[] encoderBiasLogVar;          // Latent log variance bias
+    private double[][] encoderWeights1;          // Input -> Hidden
+    private double[] encoderBias1;               // Hidden bias
+    private double[][] encoderWeightsMu;         // Hidden -> Latent mean
+    private double[] encoderBiasMu;              // Latent mean bias
+    private double[][] encoderWeightsLogVar;     // Hidden -> Latent log variance
+    private double[] encoderBiasLogVar;          // Latent log variance bias
     
     // Decoder network parameters
-    private final double[][] decoderWeights1;          // Latent -> Hidden
-    private final double[] decoderBias1;               // Hidden bias
-    private final double[][] decoderWeights2;          // Hidden -> Output
-    private final double[] decoderBias2;               // Output bias
+    private double[][] decoderWeights1;          // Latent -> Hidden
+    private double[] decoderBias1;               // Hidden bias
+    private double[][] decoderWeights2;          // Hidden -> Output
+    private double[] decoderBias2;               // Output bias
     
     // Pre-allocated buffers for inference
-    private final double[] hiddenEncoder;
-    private final double[] latentMu;
-    private final double[] latentLogVar;
-    private final double[] latentSample;
-    private final double[] hiddenDecoder;
-    private final double[] reconstruction;
+    private double[] hiddenEncoder;
+    private double[] latentMu;
+    private double[] latentLogVar;
+    private double[] latentSample;
+    private double[] hiddenDecoder;
+    private double[] reconstruction;
     
     // Training state
     private final List<VAETrainingExample> trainingData;
