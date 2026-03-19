@@ -207,6 +207,8 @@ public class TemporalConvolutionalNetwork implements Serializable {
             for (int j = 0; j < OUTPUT_CHANNELS; j++) {
                 outputWeights[i][j] = random.nextGaussian() * scale;
             }
+        }
+        for (int j = 0; j < OUTPUT_CHANNELS; j++) {
             outputBias[j] = 0;
         }
         
