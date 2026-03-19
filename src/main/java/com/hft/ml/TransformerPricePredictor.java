@@ -50,13 +50,13 @@ public class TransformerPricePredictor implements Serializable {
     private final double[] outputBias;
     
     // Pre-allocated buffers for inference (zero allocation during trading)
-    private final double[][] inputSequence;
-    private final double[][] positionalEncoding;
-    private final double[][][] attentionScores;
-    private final double[][][] attentionOutputs;
-    private final double[][] layerNormOutputs;
-    private final double[][] feedForwardOutputs;
-    private final double[] finalOutput;
+    private double[][] inputSequence;
+    private double[][] positionalEncoding;
+    private double[][] attentionScores;
+    private double[][] attentionOutputs;
+    private double[] layerNormOutputs;
+    private double[] feedForwardOutputs;
+    private double[] finalOutput;
     
     // Training state
     private final List<double[]> trainingData;
@@ -188,10 +188,10 @@ public class TransformerPricePredictor implements Serializable {
     private void initializeBuffers() {
         inputSequence = new double[SEQUENCE_LENGTH][D_MODEL];
         positionalEncoding = new double[SEQUENCE_LENGTH][D_MODEL];
-        attentionScores = new double[NUM_LAYERS][NUM_HEADS][SEQUENCE_LENGTH];
-        attentionOutputs = new double[NUM_LAYERS][NUM_HEADS][D_MODEL / NUM_HEADS];
-        layerNormOutputs = new double[NUM_LAYERS][D_MODEL];
-        feedForwardOutputs = new double[NUM_LAYERS][D_MODEL];
+        attentionScores = new double[SEQUENCE_LENGTH][SEQUENCE_LENGTH];
+        attentionOutputs = new double[SEQUENCE_LENGTH][D_MODEL / NUM_HEADS];
+        layerNormOutputs = new double[D_MODEL];
+        feedForwardOutputs = new double[D_MODEL];
         finalOutput = new double[2];
         
         // Pre-compute positional encoding
