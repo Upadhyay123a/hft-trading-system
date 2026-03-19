@@ -339,9 +339,11 @@ public class PrecomputedFeatures {
      * Get available feature names
      */
     public String[] getAvailableFeatures() {
-        return featureDefinitions.stream()
-                .map(def -> def.name)
-                .toArray(String[]::new);
+        String[] features = new String[featureDefinitions.length];
+        for (int i = 0; i < featureDefinitions.length; i++) {
+            features[i] = featureDefinitions[i].name;
+        }
+        return features;
     }
     
     /**
