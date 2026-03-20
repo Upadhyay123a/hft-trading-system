@@ -70,12 +70,29 @@ public class Main {
         engine.start();
         
         // Wait for user input to stop
-        logger.info("\nPress ENTER to stop trading...\n");
+        logger.info("\n=== TRADING SYSTEM RUNNING ===");
+        logger.info("Press ENTER to stop trading...");
+        logger.info("System is processing live market data from Binance");
+        logger.info("=====================================\n");
+        
         Scanner scanner = new Scanner(System.in);
+        
+        // Check for user input every second
+        while (!scanner.hasNextLine()) {
+            try {
+                Thread.sleep(1000); // Check every second
+            } catch (InterruptedException e) {
+                logger.info("Interrupted, shutting down...");
+                break;
+            }
+        }
+        
+        // Read the ENTER key
         scanner.nextLine();
         
         // Shutdown
-        logger.info("Shutting down ultra-high performance engine...");
+        logger.info("\n=== SHUTTING DOWN ===");
+        logger.info("Stopping ultra-high performance engine...");
         engine.stop();
         
         logger.info("=== Final Statistics ===");

@@ -31,7 +31,7 @@ public class DisruptorEngine {
     private static final Logger logger = LoggerFactory.getLogger(DisruptorEngine.class);
     
     // Disruptor configuration
-    private static final int BUFFER_SIZE = 1024 * 64; // Must be power of 2
+    private static final int BUFFER_SIZE = 1024 * 256; // 256K buffer - LARGER for higher throughput
     private static final int NUM_PROCESSORS = Runtime.getRuntime().availableProcessors();
     
     // Core components
@@ -69,7 +69,7 @@ public class DisruptorEngine {
             public Thread newThread(Runnable r) {
                 Thread t = new Thread(r, "Disruptor-" + threadNumber.getAndIncrement());
                 t.setDaemon(false);
-                t.setPriority(Thread.MAX_PRIORITY - 1); // High priority
+                t.setPriority(Thread.MAX_PRIORITY); // MAX PRIORITY for ultra-low latency
                 return t;
             }
         };
@@ -80,7 +80,7 @@ public class DisruptorEngine {
             BUFFER_SIZE,
             threadFactory,
             ProducerType.MULTI, // Allow multiple producers
-            new BlockingWaitStrategy() // Can be optimized to BusySpinWaitStrategy for ultra-low latency
+            new BusySpinWaitStrategy() // ULTRA-LOW LATENCY - CPU intensive but fastest
         );
         
         // Initialize event handlers

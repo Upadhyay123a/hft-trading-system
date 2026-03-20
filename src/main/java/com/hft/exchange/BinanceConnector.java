@@ -27,6 +27,10 @@ public class BinanceConnector {
     private final List<String> symbols;
     private volatile boolean connected = false;
     
+    // Rate limiting for logs
+    private long lastWarningTime = 0;
+    private static final long WARNING_INTERVAL = 5000; // Log warnings every 5 seconds
+    
     public BinanceConnector(List<String> symbols) {
         this.symbols = new ArrayList<>(symbols);
         // Ensure symbols are registered
@@ -109,7 +113,11 @@ public class BinanceConnector {
             
             // Add to queue (non-blocking)
             if (!tickQueue.offer(tick)) {
-                logger.warn("Tick queue full, dropping tick");
+                long currentTime = System.currentTimeMillis();
+                if (currentTime - lastWarningTime > WARNING_INTERVAL) {
+                    logger.warn("Tick queue full, dropping tick (queue size: {})", tickQueue.size());
+                    lastWarningTime = currentTime;
+                }
             }
             
         } catch (Exception e) {
