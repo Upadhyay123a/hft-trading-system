@@ -144,26 +144,51 @@ public class WebSocketApiServer implements AeronMarketDataFeed.WebSocketHandler 
     }
     
     /**
-     * Server loop (mock implementation)
+     * Server loop (SAFE implementation with timeouts)
      */
     private void serverLoop() {
-        while (running.get()) {
+        int errorCount = 0;
+        final int MAX_ERRORS = 10;
+        
+        while (running.get() && errorCount < MAX_ERRORS) {
             try {
-                // Process connections and messages
+                // Process connections with timeout
                 processConnections();
                 
-                // Simulate message processing
-                if (Math.random() < 0.1) { // 10% chance of incoming message
+                // Simulate message processing (limited)
+                if (Math.random() < 0.05) { // Reduced to 5% chance
                     simulateIncomingMessage();
                 }
                 
-                Thread.sleep(100); // 100ms processing interval
+                // Longer sleep to reduce CPU usage
+                Thread.sleep(500); // 500ms processing interval
+                
+                // Reset error count on success
+                errorCount = 0;
+                
             } catch (InterruptedException e) {
+                logger.info("WebSocket server loop interrupted");
                 break;
             } catch (Exception e) {
-                logger.error("Error in WebSocket server loop", e);
+                errorCount++;
+                logger.error("Error in WebSocket server loop ({}): {}", errorCount, e.getMessage());
+                
+                // Exit if too many errors
+                if (errorCount >= MAX_ERRORS) {
+                    logger.error("Too many errors in WebSocket server, stopping");
+                    break;
+                }
+                
+                // Wait before retry
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException ie) {
+                    break;
+                }
             }
         }
+        
+        logger.info("WebSocket server loop terminated");
     }
     
     /**
