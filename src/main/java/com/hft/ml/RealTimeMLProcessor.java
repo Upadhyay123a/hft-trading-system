@@ -304,7 +304,7 @@ public class RealTimeMLProcessor {
                     }
                 }
                 
-                Thread.sleep(0, 10000); // 10 microseconds
+                Thread.sleep(100); // SAFETY: 100ms to prevent CPU starvation
                 
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
