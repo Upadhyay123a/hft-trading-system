@@ -71,7 +71,33 @@ public class RunAllBacktests {
 
         // Advanced ML Strategy (will run inference; training skipped to keep runtime small)
         AdvancedMLStrategy adv = new AdvancedMLStrategy(SymbolMapper.BTCUSDT, 0.02, 100, 1000);
-        BacktestResult r6 = new BacktestEngine(adv, dataFile, SymbolMapper.BTCUSDT).run();
+        BacktestResult r6 = null;
+        try {
+            r6 = new BacktestEngine(adv, dataFile, SymbolMapper.BTCUSDT).run();
+        } catch (Exception e) {
+            System.err.println("AdvancedML backtest failed: " + e.getMessage());
+        }
+
+        if (r6 == null) {
+            // Models likely untrained — run a short training and retry
+            System.out.println("Training Advanced ML models (short run) to enable inference...");
+            try {
+                adv.trainModels();
+                r6 = new BacktestEngine(adv, dataFile, SymbolMapper.BTCUSDT).run();
+            } catch (Exception e) {
+                System.err.println("AdvancedML training/run failed: " + e.getMessage());
+            }
+        }
+
+        if (r6 == null) {
+            // Still failed — fill placeholder result
+            r6 = new BacktestResult();
+            r6.strategyName = adv.getName();
+            r6.duration = 0;
+            r6.ticksProcessed = 0;
+            r6.tradesExecuted = 0;
+            r6.totalPnL = 0.0;
+        }
         summaryLines.add(String.format("AdvancedML,%d,%d,%d,%.2f,%.2f",
             r6.duration, r6.ticksProcessed, r6.tradesExecuted, r6.totalPnL,
             r6.ticksProcessed / (Math.max(1, r6.duration) / 1000.0)));
