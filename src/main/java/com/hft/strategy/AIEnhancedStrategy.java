@@ -246,7 +246,7 @@ public class AIEnhancedStrategy implements Strategy {
                 orderIdGenerator.getAndIncrement(),
                 symbolId,
                 tick.price,
-                Math.abs(currentPosition),
+                (int)Math.abs(currentPosition),
                 currentPosition > 0 ? (byte)1 : (byte)0, // Close position
                 (byte)1  // Market order
             );

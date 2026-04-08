@@ -102,7 +102,7 @@ public class WebSocketApiServer implements AeronMarketDataFeed.WebSocketHandler 
     /**
      * Process WebSocket connections (mock implementation)
      */
-    protected void processConnections() {
+    public void processConnections() {
         try {
             // Simulate new connections (reduced rate)
             if (Math.random() < 0.01 && connections.size() < 10) { // 1% chance, max 10 connections

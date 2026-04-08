@@ -27,6 +27,12 @@ public class Main {
         logger.info("=== HFT Trading System ===");
         logger.info("Starting up...");
         
+        // Add shutdown hook for proper cleanup
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            logger.info("Shutdown hook activated - cleaning up...");
+            // Cleanup will be handled by engine.stop()
+        }));
+        
         // Configure symbols to trade
         List<String> symbols = Arrays.asList("BTCUSDT", "ETHUSDT");
         
@@ -72,26 +78,23 @@ public class Main {
         
         // Wait for user input to stop
         logger.info("\n=== TRADING SYSTEM RUNNING ===");
-        logger.info("Press ENTER to stop trading...");
         logger.info("System is processing live market data from Binance");
         logger.info("=====================================\n");
         
         Scanner scanner = new Scanner(System.in);
         
-        // Check for user input every second with proper shutdown
+        // Check for user input with non-blocking approach
         try {
+            logger.info("System started. Press Ctrl+C to stop...");
+            
+            // Simple non-blocking wait - just wait for interruption
             while (engine.isRunning()) {
-                if (scanner.hasNextLine()) {
-                    break; // User pressed ENTER
-                }
-                Thread.sleep(100); // Check every 100ms
+                Thread.sleep(1000); // Check every 1 second
             }
+            
         } catch (InterruptedException e) {
             logger.info("Interrupted, shutting down...");
         }
-        
-        // Read the ENTER key
-        scanner.nextLine();
         
         // Shutdown
         logger.info("\n=== SHUTTING DOWN ===");
