@@ -8,6 +8,7 @@ import com.hft.strategy.MarketMakingStrategy;
 import com.hft.strategy.MomentumStrategy;
 import com.hft.strategy.StatisticalArbitrageStrategy;
 import com.hft.strategy.TriangularArbitrageStrategy;
+import com.hft.strategy.AIEnhancedStrategy;
 import com.hft.strategy.Strategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -134,7 +135,8 @@ public class Main {
         System.out.println("2. Momentum (follows price trends)");
         System.out.println("3. Triangular Arbitrage (exploits cross-currency inefficiencies)");
         System.out.println("4. Statistical Arbitrage (mean reversion, pairs trading)");
-        System.out.print("Enter choice (1-4): ");
+        System.out.println("5. AI-Enhanced (Gemini/Perplexity AI-powered trading)");
+        System.out.print("Enter choice (1-5): ");
         
         int choice = 1;
         try {
@@ -174,6 +176,14 @@ public class Main {
                 2.0,                   // 2.0 Z-score threshold
                 0.001,                 // 0.1% minimum spread
                 1                      // 1 unit order size
+            );
+        } else if (choice == 5) {
+            // AI-Enhanced strategy
+            logger.info("Creating AI-Enhanced Strategy");
+            return new AIEnhancedStrategy(
+                SymbolMapper.BTCUSDT,  // Trade BTC
+                1,                      // Base order size
+                10                      // Max position
             );
         } else {
             // Market making strategy (default)
