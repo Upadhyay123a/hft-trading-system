@@ -52,9 +52,12 @@ public class TradingEngine {
         Thread processingThread = new Thread(() -> {
             while (running.get()) {
                 try {
-                    // Get next tick from exchange
-                    Tick tick = connector.getNextTick();
-                    if (tick == null) continue;
+                    // SAFETY: Get next tick with non-blocking approach
+                    Tick tick = connector.pollTick(); // Non-blocking call
+                    if (tick == null) {
+                        Thread.sleep(100); // SAFETY: Prevent CPU spinning
+                        continue;
+                    }
                     
                     processTick(tick);
                     
