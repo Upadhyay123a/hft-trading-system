@@ -168,8 +168,14 @@ public class AdvancedMLStrategy implements Strategy {
         // Get all technical indicators
         double[] allIndicators = indicators.getAllIndicators();
         
-        // Get market regime
-        MarketRegimeClassifier.MarketRegime regime = regimeClassifier.predict(allIndicators);
+        // Get market regime (fallback to RANGING if classifier not trained)
+        MarketRegimeClassifier.MarketRegime regime;
+        if (regimeClassifier.isTrained()) {
+            regime = regimeClassifier.predict(allIndicators);
+        } else {
+            logger.warn("Regime classifier not trained — using RANGING fallback");
+            regime = MarketRegimeClassifier.MarketRegime.RANGING;
+        }
         
         // Get LSTM price prediction
         double[] pricePrediction = lstmPredictor.predict(getRecentPrices());
