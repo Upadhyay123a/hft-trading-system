@@ -271,28 +271,31 @@ public class WebSocketApiServer implements AeronMarketDataFeed.WebSocketHandler 
     }
     
     /**
-     * Simulate message data
+     * Simulate message data (SAFE with size limits)
      */
     private byte[] simulateMessage() {
-        // Simulate different message types
-        double rand = Math.random();
-        
-        if (rand < 0.3) {
-            // 30% chance of FIX message
-            return "35=D|11=12345|55=BTCUSDT|54=1|38=1.0|44=50000.0|40=2|".getBytes();
-        } else if (rand < 0.6) {
-            // 30% chance of binary message
-            ByteBuffer buffer = ByteBuffer.allocate(33);
-            buffer.put((byte)1); // Tick message type
-            buffer.putLong(System.nanoTime());
-            buffer.putInt(1); // BTC/USDT
-            buffer.putLong(500000000L); // $50000.00
-            buffer.putLong(1000000L); // Volume
-            buffer.put((byte)0); // Buy side
-            return buffer.array();
-        } else {
-            // 40% chance of other message
-            return null;
+        try {
+            // Simulate different message types (smaller, safer)
+            double rand = Math.random();
+            
+            if (rand < 0.3) {
+                // 30% chance of small FIX message
+                return "35=D|55=BTCUSDT|44=50000".getBytes();
+            } else if (rand < 0.6) {
+                // 30% chance of small binary message
+                ByteBuffer buffer = ByteBuffer.allocate(16);
+                buffer.put((byte)1); // Message type
+                buffer.putLong(System.currentTimeMillis()); // Timestamp
+                buffer.putInt(12345); // Symbol ID
+                buffer.flip();
+                return buffer.array();
+            } else {
+                // 40% chance of small text message
+                return ("MSG:" + System.currentTimeMillis()).getBytes();
+            }
+        } catch (Exception e) {
+            logger.error("Error creating simulated message: {}", e.getMessage());
+            return new byte[0]; // Return empty array on error
         }
     }
     
