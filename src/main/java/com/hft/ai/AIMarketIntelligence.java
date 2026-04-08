@@ -318,30 +318,10 @@ public class AIMarketIntelligence {
             "4. Expected next 24h movement",
             currentBTCPrice, currentETHPrice);
     }
-    
-    /**
-     * Build risk assessment prompt
-     */
-    private String buildRiskAssessmentPrompt() {
-        return String.format("""
-            Assess current cryptocurrency market risk.
-            Market conditions:
-            - BTC: $%.2f
-            - ETH: $%.2f
-            - Sentiment: %s
-            - Alert status: News=%s, Volatility=%s, Trend=%s
             
-            Evaluate:
-            1. Overall risk score (0.0-1.0)
-            2. Primary risk factors
-            3. Recommended position sizing
-            4. Stop-loss recommendations
-            """, currentBTCPrice, currentETHPrice, marketSentiment, newsAlert, volatilityAlert, trendReversalAlert);
-    }
-    
-    /**
-     * Build event monitoring prompt
-     */
+            // Extract risk metrics
+            double riskScore = extractRiskScore(response);
+            String riskFactors = extractRiskFactors(response);
     private String buildEventMonitoringPrompt() {
         return String.format("""
             Monitor for significant cryptocurrency market events.
