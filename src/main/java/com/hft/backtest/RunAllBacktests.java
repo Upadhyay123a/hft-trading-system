@@ -22,8 +22,12 @@ public class RunAllBacktests {
     public static void main(String[] args) throws Exception {
         String dataFile = "data/sample_market_data.csv";
 
-        // Ensure sample data exists (BacktestRunner already generates it if missing)
-        BacktestRunner.main(new String[]{});
+        // Ensure sample data exists; generate if missing
+        java.io.File f = new java.io.File(dataFile);
+        if (!f.exists()) {
+            System.out.println("Sample data missing — generating...");
+            com.hft.utils.SampleDataGenerator.generateData(dataFile, 100000);
+        }
 
         List<String> summaryLines = new ArrayList<>();
         summaryLines.add("strategy,duration_ms,ticks,trades,total_pnl,ticks_per_sec");
