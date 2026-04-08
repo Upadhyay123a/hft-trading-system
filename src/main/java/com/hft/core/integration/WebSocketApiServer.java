@@ -192,18 +192,42 @@ public class WebSocketApiServer implements AeronMarketDataFeed.WebSocketHandler 
     }
     
     /**
-     * Simulate new connection
+     * Simulate new connection (SAFE with memory limits)
      */
     private void simulateNewConnection() {
-        if (connectionCount.get() < MAX_CONNECTIONS) {
+        // Limit connection creation rate
+        if (connectionCount.get() < MAX_CONNECTIONS && connections.size() < MAX_CONNECTIONS) {
             String connectionId = "conn_" + System.currentTimeMillis();
             WebSocketConnection connection = new WebSocketConnection(connectionId);
+            
+            // Prevent memory leaks by cleaning old connections
+            if (connections.size() >= MAX_CONNECTIONS - 1) {
+                cleanupOldConnections();
+            }
+            
             connections.put(connectionId, connection);
             connectionCount.incrementAndGet();
             
             logger.debug("New WebSocket connection: {} (total: {})", 
                         connectionId, connectionCount.get());
         }
+    }
+    
+    /**
+     * Clean up old connections to prevent memory leaks
+     */
+    private void cleanupOldConnections() {
+        long currentTime = System.currentTimeMillis();
+        long maxAge = 60000; // 1 minute max age
+        
+        connections.keys().asIterator().forEachRemaining(connectionId -> {
+            WebSocketConnection connection = connections.get(connectionId);
+            if (connection != null && (currentTime - connection.getConnectTime()) > maxAge) {
+                connection.close();
+                connections.remove(connectionId);
+                connectionCount.decrementAndGet();
+            }
+        });
     }
     
     /**
@@ -223,21 +247,25 @@ public class WebSocketApiServer implements AeronMarketDataFeed.WebSocketHandler 
     }
     
     /**
-     * Simulate incoming message
+     * Simulate incoming message (SAFE with limits)
      */
     private void simulateIncomingMessage() {
-        if (!connections.isEmpty()) {
-            String connectionId = connections.keys().nextElement();
-            WebSocketConnection connection = connections.get(connectionId);
-            
-            if (connection != null) {
-                // Simulate different message types
-                byte[] message = simulateMessage();
+        if (!connections.isEmpty() && messagesReceived.get() < 1000) { // Limit messages
+            try {
+                String connectionId = connections.keys().nextElement();
+                WebSocketConnection connection = connections.get(connectionId);
                 
-                if (message != null) {
-                    handleMessage(message);
-                    messagesReceived.incrementAndGet();
+                if (connection != null && !connection.isClosed()) {
+                    // Simulate different message types (smaller messages)
+                    byte[] message = simulateMessage();
+                    
+                    if (message != null && message.length < 1024) { // Limit message size
+                        handleMessage(message);
+                        messagesReceived.incrementAndGet();
+                    }
                 }
+            } catch (Exception e) {
+                logger.error("Error simulating incoming message: {}", e.getMessage());
             }
         }
     }
