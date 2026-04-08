@@ -1,9 +1,5 @@
 package com.hft.utils;
 
-import com.hft.core.SymbolMapper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -12,8 +8,11 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.hft.core.SymbolMapper;
 
 /**
  * Lightweight utility to fetch public historical klines from Binance
@@ -73,7 +72,7 @@ public class DataFetcher {
                         if (trimmed.startsWith("[")) trimmed = trimmed.substring(1);
                         if (trimmed.endsWith("]")) trimmed = trimmed.substring(0, trimmed.length()-1);
 
-                        String[] bars = trimmed.split("\],\[");
+                        String[] bars = trimmed.split("\\],\\[");
                         for (String bar : bars) {
                             String clean = bar.replaceAll("\\[|\\]", "");
                             String[] parts = clean.split(",");
