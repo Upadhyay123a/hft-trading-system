@@ -15,6 +15,7 @@ import com.hft.ml.MarketRegimeClassifier;
 import com.hft.ml.ReinforcementLearningAgent;
 import com.hft.ml.TechnicalIndicators;
 import com.hft.orderbook.OrderBook;
+import com.hft.utils.DataFetcher;
 
 /**
  * Advanced ML-Enhanced Trading Strategy
@@ -467,7 +468,63 @@ public class AdvancedMLStrategy implements Strategy {
                     regimeClassifier.train(featuresForTrain, labelsForTrain);
                     logger.info("Market Regime Classifier trained on {} samples", featuresForTrain.size());
                 } else {
-                    logger.warn("Not enough samples to train regime classifier (features={}, labels={}) — skipping training", featuresForTrain.size(), labelsForTrain.size());
+                    logger.warn("Not enough samples to train regime classifier (features={}, labels={}) — attempting to fetch larger public dataset", featuresForTrain.size(), labelsForTrain.size());
+
+                    // Attempt to fetch larger public dataset (Binance klines) and retry once
+                    try {
+                        String fetched = DataFetcher.fetchBinanceKlines("BTCUSDT", "1m", 14, "data/binance_BTCUSDT_1m.csv");
+                        if (fetched != null) {
+                            logger.info("Fetched public dataset {}, retrying training...", fetched);
+                            // Rebuild feature/label lists from fetched file
+                            java.util.List<Double> priceList2 = new java.util.ArrayList<>();
+                            java.util.List<double[]> featureList2 = new java.util.ArrayList<>();
+                            TechnicalIndicators ti2 = new TechnicalIndicators(100);
+                            java.io.File f2 = new java.io.File(fetched);
+                            try (java.io.BufferedReader br2 = new java.io.BufferedReader(new java.io.FileReader(f2))) {
+                                String header2 = br2.readLine();
+                                String line2;
+                                int idx2 = 0;
+                                while ((line2 = br2.readLine()) != null) {
+                                    String[] parts2 = line2.split(",");
+                                    if (parts2.length < 4) continue;
+                                    double price2 = Long.parseLong(parts2[2]) / 10000.0;
+                                    double volume2 = Long.parseLong(parts2[3]) / 1000000.0;
+                                    priceList2.add(price2);
+                                    ti2.addData(price2, volume2);
+                                    int lookback2 = 20;
+                                    int requiredIndicators2 = 26;
+                                    if (idx2 >= Math.max(lookback2, requiredIndicators2) && ti2.hasEnoughData(requiredIndicators2)) {
+                                        featureList2.add(ti2.getAllIndicators());
+                                    }
+                                    idx2++;
+                                }
+                            }
+
+                            double[] pricesArr2 = new double[priceList2.size()];
+                            for (int i = 0; i < priceList2.size(); i++) pricesArr2[i] = priceList2.get(i);
+                            java.util.List<com.hft.ml.MarketRegimeClassifier.MarketRegime> labels2 = com.hft.ml.MarketRegimeClassifier.generateLabels(pricesArr2, 20);
+
+                            if (featureList2.size() > labels2.size()) {
+                                featureList2 = featureList2.subList(featureList2.size() - labels2.size(), featureList2.size());
+                            } else if (labels2.size() > featureList2.size()) {
+                                labels2 = labels2.subList(labels2.size() - featureList2.size(), labels2.size());
+                            }
+
+                            java.util.List<double[]> featuresForTrain2 = new java.util.ArrayList<>(featureList2);
+                            java.util.List<com.hft.ml.MarketRegimeClassifier.MarketRegime> labelsForTrain2 = new java.util.ArrayList<>(labels2);
+
+                            if (featuresForTrain2.size() > 50 && labelsForTrain2.size() > 50) {
+                                regimeClassifier.train(featuresForTrain2, labelsForTrain2);
+                                logger.info("Market Regime Classifier trained on fetched dataset ({} samples)", featuresForTrain2.size());
+                            } else {
+                                logger.warn("Fetched dataset insufficient for training (features={}, labels={})", featuresForTrain2.size(), labelsForTrain2.size());
+                            }
+                        } else {
+                            logger.warn("Public dataset fetch failed — skipping additional training");
+                        }
+                    } catch (Exception retryEx) {
+                        logger.error("Retry training with public data failed: {}", retryEx.getMessage(), retryEx);
+                    }
                 }
             } else {
                 logger.warn("Sample data file {} not found — skipping regime classifier training", dataFile);
