@@ -27,6 +27,9 @@ public class Main {
         logger.info("=== HFT Trading System ===");
         logger.info("Starting up...");
         
+        // SAFETY: Engine reference for shutdown hook
+        final UltraHighPerformanceEngine[] engineRef = new UltraHighPerformanceEngine[1];
+        
         // SAFETY: Add shutdown hook with proper thread interruption
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             logger.info("SAFETY: Shutdown hook activated - forcing cleanup...");
@@ -35,9 +38,9 @@ public class Main {
                 Thread.currentThread().interrupt();
                 
                 // Force engine stop if running
-                if (engine != null && engine.isRunning()) {
+                if (engineRef[0] != null && engineRef[0].isRunning()) {
                     logger.warn("SAFETY: Forcing engine shutdown via hook");
-                    engine.stop();
+                    engineRef[0].stop();
                 }
                 
                 // Give some time for cleanup
