@@ -83,17 +83,40 @@ public class Main {
         
         Scanner scanner = new Scanner(System.in);
         
-        // Check for user input with non-blocking approach
+        // Check for user input with timeout and proper shutdown
         try {
             logger.info("System started. Press Ctrl+C to stop...");
+            logger.info("Automatic safety shutdown in 60 seconds...");
             
-            // Simple non-blocking wait - just wait for interruption
-            while (engine.isRunning()) {
+            // SAFETY: Add automatic timeout to prevent infinite running
+            long startTime = System.currentTimeMillis();
+            long maxRunTime = 60000; // 1 minute max for safety
+            long lastStatusTime = startTime;
+            
+            while (engine.isRunning() && (System.currentTimeMillis() - startTime) < maxRunTime) {
                 Thread.sleep(1000); // Check every 1 second
+                
+                // SAFETY: Print status every 10 seconds to show system is responsive
+                long currentTime = System.currentTimeMillis();
+                if (currentTime - lastStatusTime > 10000) {
+                    long remainingTime = maxRunTime - (currentTime - startTime);
+                    logger.info("System running... {} seconds remaining until auto-shutdown", 
+                               remainingTime / 1000);
+                    lastStatusTime = currentTime;
+                }
+            }
+            
+            // SAFETY: Force stop if timeout reached
+            if (engine.isRunning()) {
+                logger.warn("SAFETY TIMEOUT: Forcing shutdown after {} seconds", maxRunTime / 1000);
+                engine.stop();
             }
             
         } catch (InterruptedException e) {
-            logger.info("Interrupted, shutting down...");
+            logger.info("Interrupted by user, shutting down...");
+            Thread.currentThread().interrupt();
+        } catch (Exception e) {
+            logger.error("Unexpected error in main loop, forcing shutdown", e);
         }
         
         // Shutdown
