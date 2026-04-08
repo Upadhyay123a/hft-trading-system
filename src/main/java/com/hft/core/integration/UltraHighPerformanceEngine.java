@@ -122,11 +122,26 @@ public class UltraHighPerformanceEngine {
         running.set(false);
         
         // Stop components in reverse order
-        webSocketServer.stop();
-        aeronFeed.stop();
-        disruptorEngine.stop();
-        
-        printFinalStatistics();
+        try {
+            if (webSocketServer != null) {
+                webSocketServer.stop();
+            }
+            if (aeronFeed != null) {
+                aeronFeed.stop();
+            }
+            if (disruptorEngine != null) {
+                disruptorEngine.stop();
+            }
+            
+            // Wait for threads to stop
+            Thread.sleep(1000);
+            
+            printFinalStatistics();
+            
+        } catch (InterruptedException e) {
+            logger.info("Interrupted during shutdown");
+            Thread.currentThread().interrupt();
+        }
         
         logger.info("Ultra-High Performance Engine stopped");
     }
