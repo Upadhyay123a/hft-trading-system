@@ -353,10 +353,21 @@ public class UltraHighPerformanceEngine {
     // Getters
     public long getTicksProcessed() { return ticksProcessed.get(); }
     public long getOrdersProcessed() { return ordersProcessed.get(); }
-    public long getTradesExecuted() { return tradesExecuted.get(); }
+    /**
+     * Get number of trades executed
+     */
+    public long getTradesExecuted() {
+        return tradesExecuted.get();
+    }
+    
+    /**
+     * Check if engine is running
+     */
+    public boolean isRunning() {
+        return running.get();
+    }
     public long getMessagesProcessed() { return messagesProcessed.get(); }
     public long getFixMessagesProcessed() { return fixMessagesProcessed.get(); }
-    public boolean isRunning() { return running.get(); }
     
     /**
      * Get engine configuration
