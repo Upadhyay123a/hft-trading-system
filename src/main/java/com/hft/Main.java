@@ -27,11 +27,28 @@ public class Main {
         logger.info("=== HFT Trading System ===");
         logger.info("Starting up...");
         
-        // Add shutdown hook for proper cleanup
+        // SAFETY: Add shutdown hook with proper thread interruption
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            logger.info("Shutdown hook activated - cleaning up...");
-            // Cleanup will be handled by engine.stop()
-        }));
+            logger.info("SAFETY: Shutdown hook activated - forcing cleanup...");
+            try {
+                // Interrupt main thread if it's stuck
+                Thread.currentThread().interrupt();
+                
+                // Force engine stop if running
+                if (engine != null && engine.isRunning()) {
+                    logger.warn("SAFETY: Forcing engine shutdown via hook");
+                    engine.stop();
+                }
+                
+                // Give some time for cleanup
+                Thread.sleep(2000);
+                
+            } catch (InterruptedException e) {
+                logger.info("Shutdown hook interrupted");
+            } catch (Exception e) {
+                logger.error("Error in shutdown hook", e);
+            }
+        }, "Safety-Shutdown-Hook"));
         
         // Configure symbols to trade
         List<String> symbols = Arrays.asList("BTCUSDT", "ETHUSDT");
