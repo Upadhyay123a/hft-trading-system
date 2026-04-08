@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Binance WebSocket connector for real-time market data
@@ -126,10 +127,10 @@ public class BinanceConnector {
     }
     
     /**
-     * Get next tick (blocking)
+     * Get next tick (with timeout to prevent infinite blocking)
      */
     public Tick getNextTick() throws InterruptedException {
-        return tickQueue.take();
+        return tickQueue.poll(100, TimeUnit.MILLISECONDS);
     }
     
     /**
