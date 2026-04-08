@@ -93,6 +93,9 @@ public class Main {
         
         UltraHighPerformanceEngine engine = new UltraHighPerformanceEngine(strategy, riskManager);
         
+        // SAFETY: Store engine reference for shutdown hook
+        engineRef[0] = engine;
+        
         // Start the engine
         engine.start();
         
