@@ -64,9 +64,9 @@ public class AdvancedMLStrategy implements Strategy {
     private final AtomicLong trades;
     private double totalReward;
     
-    // Training configuration
-    private static final int LSTM_TRAINING_EPOCHS = 50;
-    private static final int RL_TRAINING_EPISODES = 100;
+    // Training configuration (configurable via system properties)
+    private static final int LSTM_TRAINING_EPOCHS = Integer.parseInt(System.getProperty("advml.lstm.epochs", "50"));
+    private static final int RL_TRAINING_EPISODES = Integer.parseInt(System.getProperty("advml.rl.episodes", "100"));
     private static final int PRICE_HISTORY_SIZE = 100;
     
     // Price history for LSTM
@@ -412,10 +412,15 @@ public class AdvancedMLStrategy implements Strategy {
         logger.info("Training Reinforcement Learning Agent...");
         rlAgent.train(RL_TRAINING_EPISODES);
 
+        // Train/prepare Market Regime Classifier using provided datafile (system property) or sample historical data
+        String forcedDataFile = System.getProperty("advml.train.datafile");
+        if (forcedDataFile != null && !forcedDataFile.isEmpty()) {
+            logger.info("advml.train.datafile specified: {} — using it for training", forcedDataFile);
+        }
         // Train/prepare Market Regime Classifier using sample historical data
         try {
             logger.info("Training Market Regime Classifier from sample data...");
-            String dataFile = "data/sample_market_data.csv";
+            String dataFile = forcedDataFile != null && !forcedDataFile.isEmpty() ? forcedDataFile : "data/sample_market_data.csv";
             java.io.File f = new java.io.File(dataFile);
             if (f.exists()) {
                 java.util.List<Double> priceList = new java.util.ArrayList<>();
