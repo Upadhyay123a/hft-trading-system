@@ -1,19 +1,20 @@
 package com.hft.strategy;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.hft.core.Order;
 import com.hft.core.Tick;
 import com.hft.core.Trade;
-import com.hft.orderbook.OrderBook;
 import com.hft.ml.LSTMPricePredictor;
 import com.hft.ml.MarketRegimeClassifier;
 import com.hft.ml.ReinforcementLearningAgent;
 import com.hft.ml.TechnicalIndicators;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
+import com.hft.orderbook.OrderBook;
 
 /**
  * Advanced ML-Enhanced Trading Strategy
@@ -403,7 +404,78 @@ public class AdvancedMLStrategy implements Strategy {
         // Train RL agent
         logger.info("Training Reinforcement Learning Agent...");
         rlAgent.train(RL_TRAINING_EPISODES);
-        
+
+        // Train/prepare Market Regime Classifier using sample historical data
+        try {
+            logger.info("Training Market Regime Classifier from sample data...");
+            String dataFile = "data/sample_market_data.csv";
+            java.io.File f = new java.io.File(dataFile);
+            if (f.exists()) {
+                java.util.List<Double> priceList = new java.util.ArrayList<>();
+                java.util.List<double[]> featureList = new java.util.ArrayList<>();
+
+                TechnicalIndicators ti = new TechnicalIndicators(100);
+
+                try (java.io.BufferedReader br = new java.io.BufferedReader(new java.io.FileReader(f))) {
+                    String header = br.readLine(); // skip header
+                    String line;
+                    int index = 0;
+                    while ((line = br.readLine()) != null) {
+                        String[] parts = line.split(",");
+                        if (parts.length < 4) continue;
+                        double price = Long.parseLong(parts[2]) / 10000.0;
+                        double volume = Long.parseLong(parts[3]) / 1000000.0;
+
+                        priceList.add(price);
+                        ti.addData(price, volume);
+
+                        // Ensure we have enough data for MACD (26) and lookback labeling
+                        int lookback = 20;
+                        int requiredIndicators = 26;
+                        if (index >= Math.max(lookback, requiredIndicators) && ti.hasEnoughData(requiredIndicators)) {
+                            featureList.add(ti.getAllIndicators());
+                        }
+                        index++;
+                    }
+                }
+
+                // Prepare labels aligned with features
+                double[] pricesArr = new double[priceList.size()];
+                for (int i = 0; i < priceList.size(); i++) pricesArr[i] = priceList.get(i);
+
+                int lookback = 20;
+                java.util.List<com.hft.ml.MarketRegimeClassifier.MarketRegime> labels = com.hft.ml.MarketRegimeClassifier.generateLabels(pricesArr, lookback);
+
+                // Align labels with features: features were collected starting at index >= Math.max(lookback, requiredIndicators)
+                // generateLabels produces labels for indices [lookback .. n-1], so we need to trim/align accordingly
+                int startFeatureIndex = Math.max(lookback, 26);
+                int expected = Math.max(0, pricesArr.length - startFeatureIndex);
+
+                if (featureList.size() > labels.size()) {
+                    // Trim featureList to labels size
+                    featureList = featureList.subList(featureList.size() - labels.size(), featureList.size());
+                } else if (labels.size() > featureList.size()) {
+                    // Trim labels to featureList size
+                    labels = labels.subList(labels.size() - featureList.size(), labels.size());
+                }
+
+                // Convert lists for training
+                java.util.List<double[]> featuresForTrain = new java.util.ArrayList<>(featureList);
+                java.util.List<com.hft.ml.MarketRegimeClassifier.MarketRegime> labelsForTrain = new java.util.ArrayList<>(labels);
+
+                if (featuresForTrain.size() > 50 && labelsForTrain.size() > 50) {
+                    regimeClassifier.train(featuresForTrain, labelsForTrain);
+                    logger.info("Market Regime Classifier trained on {} samples", featuresForTrain.size());
+                } else {
+                    logger.warn("Not enough samples to train regime classifier (features={}, labels={}) — skipping training", featuresForTrain.size(), labelsForTrain.size());
+                }
+            } else {
+                logger.warn("Sample data file {} not found — skipping regime classifier training", dataFile);
+            }
+        } catch (Exception ex) {
+            logger.error("Failed to train Market Regime Classifier: {}", ex.getMessage(), ex);
+        }
+
         logger.info("ML model training completed");
     }
     
