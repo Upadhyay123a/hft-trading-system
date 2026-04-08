@@ -318,27 +318,47 @@ public class AIMarketIntelligence {
             "4. Expected next 24h movement",
             currentBTCPrice, currentETHPrice);
     }
-            
-            // Extract risk metrics
-            double riskScore = extractRiskScore(response);
-            String riskFactors = extractRiskFactors(response);
+    
+    /**
+     * Build risk assessment prompt
+     */
+    private String buildRiskAssessmentPrompt() {
+        return String.format(
+            "Assess current cryptocurrency market risk.\n" +
+            "Market conditions:\n" +
+            "- BTC: $%.2f\n" +
+            "- ETH: $%.2f\n" +
+            "- Current sentiment: %s\n" +
+            "- Alert status: News=%s, Volatility=%s, Trend=%s\n" +
+            "\n" +
+            "Evaluate:\n" +
+            "1. Overall risk score (0.0-1.0)\n" +
+            "2. Primary risk factors\n" +
+            "3. Recommended position sizing\n" +
+            "4. Stop-loss recommendations",
+            currentBTCPrice, currentETHPrice, marketSentiment, newsAlert, volatilityAlert, trendReversalAlert);
+    }
+    
+    /**
+     * Build event monitoring prompt
+     */
     private String buildEventMonitoringPrompt() {
-        return String.format("""
-            Monitor for significant cryptocurrency market events.
-            Current market state:
-            - BTC: $%.2f
-            - ETH: $%.2f
-            - Market alerts: %s
-            
-            Identify:
-            1. Major news events
-            2. Regulatory announcements
-            3. Exchange activities
-            4. Whale movements
-            5. Technical breakouts
-            
-            List events with potential trading impact.
-            """, currentBTCPrice, currentETHPrice, getAlertStatus());
+        return String.format(
+            "Monitor for significant cryptocurrency market events.\n" +
+            "Current market state:\n" +
+            "- BTC: $%.2f\n" +
+            "- ETH: $%.2f\n" +
+            "- Market alerts: %s\n" +
+            "\n" +
+            "Identify:\n" +
+            "1. Major news events\n" +
+            "2. Regulatory announcements\n" +
+            "3. Exchange activities\n" +
+            "4. Whale movements\n" +
+            "5. Technical breakouts\n" +
+            "\n" +
+            "List events with potential trading impact.",
+            currentBTCPrice, currentETHPrice, getAlertStatus());
     }
     
     /**
