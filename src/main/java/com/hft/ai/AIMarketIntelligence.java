@@ -279,44 +279,44 @@ public class AIMarketIntelligence {
      * Build news analysis prompt
      */
     private String buildNewsAnalysisPrompt() {
-        return String.format("""
-            Analyze the current cryptocurrency market sentiment based on recent news.
-            Current market data:
-            - BTC Price: $%.2f
-            - ETH Price: $%.2f
-            - Current sentiment: %s
-            
-            Please provide:
-            1. Overall market sentiment (BULLISH/BEARISH/NEUTRAL)
-            2. Confidence level (0.0-1.0)
-            3. Key news drivers
-            4. Expected short-term impact
-            
-            Focus on crypto-specific news, regulatory developments, and market events.
-            """, currentBTCPrice, currentETHPrice, marketSentiment);
+        return String.format(
+            "Analyze the current cryptocurrency market sentiment based on recent news.\n" +
+            "Current market data:\n" +
+            "- BTC Price: $%.2f\n" +
+            "- ETH Price: $%.2f\n" +
+            "- Current sentiment: %s\n" +
+            "\n" +
+            "Please provide:\n" +
+            "1. Overall market sentiment (BULLISH/BEARISH/NEUTRAL)\n" +
+            "2. Confidence level (0.0-1.0)\n" +
+            "3. Key news drivers\n" +
+            "4. Expected short-term impact\n" +
+            "\n" +
+            "Focus on crypto-specific news, regulatory developments, and market events.",
+            currentBTCPrice, currentETHPrice, marketSentiment);
     }
     
     /**
      * Build trend analysis prompt
      */
     private String buildTrendAnalysisPrompt() {
-        return String.format("""
-            Analyze current cryptocurrency market trends.
-            Current prices:
-            - BTC: $%.2f
-            - ETH: $%.2f
-            
-            Technical indicators suggest:
-            - Recent volume trends
-            - Price momentum
-            - Market correlations
-            
-            Provide:
-            1. Current trend direction (UPTREND/DOWNTREND/SIDEWAYS)
-            2. Trend strength (0.0-1.0)
-            3. Key support/resistance levels
-            4. Expected next 24h movement
-            """, currentBTCPrice, currentETHPrice);
+        return String.format(
+            "Analyze current cryptocurrency market trends.\n" +
+            "Current prices:\n" +
+            "- BTC: $%.2f\n" +
+            "- ETH: $%.2f\n" +
+            "\n" +
+            "Technical indicators suggest:\n" +
+            "- Recent volume trends\n" +
+            "- Price momentum\n" +
+            "- Market correlations\n" +
+            "\n" +
+            "Provide:\n" +
+            "1. Current trend direction (UPTREND/DOWNTREND/SIDEWAYS)\n" +
+            "2. Trend strength (0.0-1.0)\n" +
+            "3. Key support/resistance levels\n" +
+            "4. Expected next 24h movement",
+            currentBTCPrice, currentETHPrice);
     }
     
     /**
