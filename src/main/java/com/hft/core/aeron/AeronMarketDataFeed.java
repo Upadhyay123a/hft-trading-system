@@ -35,13 +35,13 @@ public class AeronMarketDataFeed {
     private static final int WEBSOCKET_STREAM = 2;
     private static final int ORDER_STREAM = 3;
     
-    // Aeron components
-    private final MediaDriver mediaDriver;
-    private final Aeron aeron;
-    private final Publication marketDataPublication;
-    private final Subscription marketDataSubscription;
-    private final Publication websocketPublication;
-    private final Subscription orderSubscription;
+    // Aeron components (may be null if Aeron unavailable)
+    private MediaDriver mediaDriver;
+    private Aeron aeron;
+    private Publication marketDataPublication;
+    private Subscription marketDataSubscription;
+    private Publication websocketPublication;
+    private Subscription orderSubscription;
     
     // Buffers
     private final ByteBuffer sendBuffer = ByteBuffer.allocateDirect(1024);
@@ -54,31 +54,42 @@ public class AeronMarketDataFeed {
     private WebSocketHandler webSocketHandler;
     
     public AeronMarketDataFeed() {
-        // Start embedded media driver
-        MediaDriver.Context driverContext = new MediaDriver.Context()
-            .dirDeleteOnStart(true)
-            .threadingMode(ThreadingMode.DEDICATED)
-            .sharedIdleStrategy(new SleepingMillisIdleStrategy(1));
+        try {
+            // Start embedded media driver
+            MediaDriver.Context driverContext = new MediaDriver.Context()
+                .dirDeleteOnStart(true)
+                .threadingMode(ThreadingMode.DEDICATED)
+                .sharedIdleStrategy(new SleepingMillisIdleStrategy(1));
+                
+            this.mediaDriver = MediaDriver.launch(driverContext);
             
-        this.mediaDriver = MediaDriver.launch(driverContext);
-        
-        // Create Aeron context
-        Aeron.Context aeronContext = new Aeron.Context()
-            .aeronDirectoryName(mediaDriver.aeronDirectoryName())
-            .keepAliveIntervalNs(1_000_000_000L); // 1 second
+            // Create Aeron context
+            Aeron.Context aeronContext = new Aeron.Context()
+                .aeronDirectoryName(mediaDriver.aeronDirectoryName())
+                .keepAliveIntervalNs(1_000_000_000L); // 1 second
+                
+            this.aeron = Aeron.connect(aeronContext);
             
-        this.aeron = Aeron.connect(aeronContext);
-        
-        // Create publications and subscriptions
-        this.marketDataPublication = aeron.addPublication(MARKET_DATA_CHANNEL, MARKET_DATA_STREAM);
-        this.marketDataSubscription = aeron.addSubscription(MARKET_DATA_CHANNEL, MARKET_DATA_STREAM);
-        this.websocketPublication = aeron.addPublication(WEBSOCKET_CHANNEL, WEBSOCKET_STREAM);
-        this.orderSubscription = aeron.addSubscription(ORDER_CHANNEL, ORDER_STREAM);
-        
-        logger.info("Aeron Market Data Feed initialized");
-        logger.info("Market Data: {} (stream: {})", MARKET_DATA_CHANNEL, MARKET_DATA_STREAM);
-        logger.info("WebSocket: {} (stream: {})", WEBSOCKET_CHANNEL, WEBSOCKET_STREAM);
-        logger.info("Orders: {} (stream: {})", ORDER_CHANNEL, ORDER_STREAM);
+            // Create publications and subscriptions
+            this.marketDataPublication = aeron.addPublication(MARKET_DATA_CHANNEL, MARKET_DATA_STREAM);
+            this.marketDataSubscription = aeron.addSubscription(MARKET_DATA_CHANNEL, MARKET_DATA_STREAM);
+            this.websocketPublication = aeron.addPublication(WEBSOCKET_CHANNEL, WEBSOCKET_STREAM);
+            this.orderSubscription = aeron.addSubscription(ORDER_CHANNEL, ORDER_STREAM);
+            
+            logger.info("Aeron Market Data Feed initialized");
+            logger.info("Market Data: {} (stream: {})", MARKET_DATA_CHANNEL, MARKET_DATA_STREAM);
+            logger.info("WebSocket: {} (stream: {})", WEBSOCKET_CHANNEL, WEBSOCKET_STREAM);
+            logger.info("Orders: {} (stream: {})", ORDER_CHANNEL, ORDER_STREAM);
+        } catch (Throwable t) {
+            // Aeron or Agrona may not be usable under current JVM (modules/accessibility)
+            logger.warn("Aeron initialization failed - continuing without Aeron: {}", t.toString());
+            this.mediaDriver = null;
+            this.aeron = null;
+            this.marketDataPublication = null;
+            this.marketDataSubscription = null;
+            this.websocketPublication = null;
+            this.orderSubscription = null;
+        }
     }
     
     /**
@@ -86,6 +97,10 @@ public class AeronMarketDataFeed {
      */
     public void start() {
         logger.info("Starting Aeron Market Data Feed");
+        if (aeron == null) {
+            logger.warn("Aeron not available; AeronMarketDataFeed.start() will be a no-op");
+            return;
+        }
         running.set(true);
         
         // Start market data subscriber
@@ -112,6 +127,17 @@ public class AeronMarketDataFeed {
      * Publish market data tick
      */
     public void publishTick(long timestamp, int symbolId, long price, long volume, byte side) {
+        if (aeron == null || marketDataPublication == null) {
+            // Aeron not available; only publish to WebSocket if present
+            sendBuffer.clear();
+            BinaryProtocol.encodeTick(sendBuffer, timestamp, symbolId, price, volume, side);
+            sendBuffer.flip();
+            if (websocketPublication != null) {
+                publishToWebSocket(sendBuffer);
+            }
+            return;
+        }
+
         sendBuffer.clear();
         
         // Encode tick using binary protocol
@@ -136,17 +162,29 @@ public class AeronMarketDataFeed {
     public void publishOrderUpdate(long orderId, int symbolId, long price, int quantity, 
                                    byte side, byte orderType, long timestamp, byte status, 
                                    int filledQuantity) {
+        if (aeron == null || marketDataPublication == null) {
+            // Aeron not available; only publish to WebSocket if present
+            sendBuffer.clear();
+            BinaryProtocol.encodeOrder(sendBuffer, orderId, symbolId, price, quantity, 
+                                      side, orderType, timestamp, status, filledQuantity);
+            sendBuffer.flip();
+            if (websocketPublication != null) {
+                publishToWebSocket(sendBuffer);
+            }
+            return;
+        }
+
         sendBuffer.clear();
-        
+
         // Encode order using binary protocol
         BinaryProtocol.encodeOrder(sendBuffer, orderId, symbolId, price, quantity, 
                                   side, orderType, timestamp, status, filledQuantity);
         sendBuffer.flip();
-        
+
         // Publish via Aeron
         DirectBuffer directBuffer = new UnsafeBuffer(sendBuffer);
         long result = marketDataPublication.offer(directBuffer);
-        
+
         if (result < 0) {
             handlePublicationFailure(result, "order update");
         } else {
@@ -170,6 +208,7 @@ public class AeronMarketDataFeed {
      * Market data subscriber loop
      */
     private void marketDataLoop() {
+        if (marketDataSubscription == null) return;
         while (running.get()) {
             marketDataSubscription.poll(this::handleMarketDataMessage, 10);
             idleStrategy.idle();
@@ -180,6 +219,7 @@ public class AeronMarketDataFeed {
      * Order subscriber loop
      */
     private void orderLoop() {
+        if (orderSubscription == null) return;
         while (running.get()) {
             orderSubscription.poll(this::handleOrderMessage, 10);
             idleStrategy.idle();
@@ -307,10 +347,10 @@ public class AeronMarketDataFeed {
      */
     public void printStatistics() {
         logger.info("=== Aeron Market Data Feed Statistics ===");
-        logger.info("Market Data Publication: {}", marketDataPublication.isConnected() ? "Connected" : "Disconnected");
-        logger.info("WebSocket Publication: {}", websocketPublication.isConnected() ? "Connected" : "Disconnected");
-        logger.info("Market Data Subscription: {}", marketDataSubscription.isConnected() ? "Connected" : "Disconnected");
-        logger.info("Order Subscription: {}", orderSubscription.isConnected() ? "Connected" : "Disconnected");
+        logger.info("Market Data Publication: {}", marketDataPublication != null && marketDataPublication.isConnected() ? "Connected" : "Unavailable");
+        logger.info("WebSocket Publication: {}", websocketPublication != null && websocketPublication.isConnected() ? "Connected" : "Unavailable");
+        logger.info("Market Data Subscription: {}", marketDataSubscription != null && marketDataSubscription.isConnected() ? "Connected" : "Unavailable");
+        logger.info("Order Subscription: {}", orderSubscription != null && orderSubscription.isConnected() ? "Connected" : "Unavailable");
         logger.info("=========================================");
     }
     
@@ -320,14 +360,18 @@ public class AeronMarketDataFeed {
     public void stop() {
         logger.info("Stopping Aeron Market Data Feed");
         running.set(false);
-        
-        CloseHelper.close(websocketPublication);
-        CloseHelper.close(marketDataPublication);
-        CloseHelper.close(orderSubscription);
-        CloseHelper.close(marketDataSubscription);
-        CloseHelper.close(aeron);
-        CloseHelper.close(mediaDriver);
-        
+
+        try {
+            CloseHelper.close(websocketPublication);
+            CloseHelper.close(marketDataPublication);
+            CloseHelper.close(orderSubscription);
+            CloseHelper.close(marketDataSubscription);
+            CloseHelper.close(aeron);
+            CloseHelper.close(mediaDriver);
+        } catch (Exception e) {
+            logger.warn("Error while stopping Aeron components", e);
+        }
+
         logger.info("Aeron Market Data Feed stopped");
     }
     
