@@ -1,0 +1,7 @@
+strategy,duration_ms,ticks,trades,total_pnl,ticks_per_sec
+MarketMaking,259,100000,0,0.00,386100.39
+Momentum,151,100000,0,0.00,662251.66
+TriangularArbitrage,131,100000,0,0.00,763358.78
+StatisticalArbitrage,158,100000,0,0.00,632911.39
+AIEnhanced,95,100000,0,0.00,1052631.58
+AdvancedML,1408,100000,0,0.00,71022.73
