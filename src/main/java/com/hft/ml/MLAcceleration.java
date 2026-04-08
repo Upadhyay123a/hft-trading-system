@@ -393,10 +393,10 @@ public class MLAcceleration {
                 throw new RuntimeException("FPGA not initialized");
             }
             
-            // Simulate FPGA inference with sub-microsecond latency
+            // SAFETY: Simulate FPGA inference with controlled latency
             // In production, would call actual FPGA kernel
             try {
-                Thread.sleep(0, 500); // 0.5 microseconds
+                Thread.sleep(10); // SAFETY: 10ms to prevent CPU starvation
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
