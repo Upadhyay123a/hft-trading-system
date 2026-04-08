@@ -1,12 +1,18 @@
 package com.hft.backtest;
 
-import com.hft.strategy.*;
-import com.hft.core.SymbolMapper;
-
 import java.io.FileWriter;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
+
+import com.hft.core.SymbolMapper;
+import com.hft.strategy.AIEnhancedStrategy;
+import com.hft.strategy.AdvancedMLStrategy;
+import com.hft.strategy.MarketMakingStrategy;
+import com.hft.strategy.MomentumStrategy;
+import com.hft.strategy.StatisticalArbitrageStrategy;
+import com.hft.strategy.Strategy;
+import com.hft.strategy.TriangularArbitrageStrategy;
 
 /**
  * Utility to run backtests for all available strategies and save a summary.
@@ -37,14 +43,16 @@ public class RunAllBacktests {
             r2.ticksProcessed / (Math.max(1, r2.duration) / 1000.0)));
 
         // Triangular Arbitrage
-        Strategy tri = new TriangularArbitrageStrategy(SymbolMapper.BTCUSDT, SymbolMapper.ETHUSDT, SymbolMapper.ETHBTC, 0.1, 1000, 0.5);
+        int ethBtc = com.hft.core.SymbolMapper.getId("ETHBTC");
+        Strategy tri = new TriangularArbitrageStrategy(com.hft.core.SymbolMapper.BTCUSDT, com.hft.core.SymbolMapper.ETHUSDT, ethBtc, 0.001, 1000, 0.005);
         BacktestResult r3 = new BacktestEngine(tri, dataFile, SymbolMapper.BTCUSDT).run();
         summaryLines.add(String.format("TriangularArbitrage,%d,%d,%d,%.2f,%.2f",
             r3.duration, r3.ticksProcessed, r3.tradesExecuted, r3.totalPnL,
             r3.ticksProcessed / (Math.max(1, r3.duration) / 1000.0)));
 
-        // Statistical Arbitrage
-        Strategy stat = new StatisticalArbitrageStrategy(SymbolMapper.BTCUSDT, 50, 2.0, 100);
+        // Statistical Arbitrage (pairs trading example)
+        int[] statSymbols = new int[] { com.hft.core.SymbolMapper.BTCUSDT, com.hft.core.SymbolMapper.ETHUSDT };
+        Strategy stat = new StatisticalArbitrageStrategy(statSymbols, 50, 2.0, 0.001, 100);
         BacktestResult r4 = new BacktestEngine(stat, dataFile, SymbolMapper.BTCUSDT).run();
         summaryLines.add(String.format("StatisticalArbitrage,%d,%d,%d,%.2f,%.2f",
             r4.duration, r4.ticksProcessed, r4.tradesExecuted, r4.totalPnL,
