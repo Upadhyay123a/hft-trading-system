@@ -31,13 +31,18 @@ public class AdvmlLossExtractor {
             .onMalformedInput(java.nio.charset.CodingErrorAction.REPLACE)
             .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPLACE);
         String content = decoder.decode(java.nio.ByteBuffer.wrap(all)).toString();
-        List<String> lines = java.util.Arrays.asList(content.split("\r?\n"));
 
-        List<Double> losses = lines.stream()
-            .map(p::matcher)
-            .filter(Matcher::find)
-            .map(m -> Double.parseDouble(m.group(1)))
-            .collect(Collectors.toList());
+        // Use a global matcher over the entire content for robustness
+        Matcher global = p.matcher(content);
+        java.util.List<Double> losses = new java.util.ArrayList<>();
+        while (global.find()) {
+            String v = global.group(1);
+            try {
+                losses.add(Double.parseDouble(v));
+            } catch (NumberFormatException ex) {
+                // skip unparsable
+            }
+        }
 
         if (losses.isEmpty()) {
             System.out.println("No Avg Loss entries found in log.");
