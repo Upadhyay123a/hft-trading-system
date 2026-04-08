@@ -78,14 +78,16 @@ public class Main {
         
         Scanner scanner = new Scanner(System.in);
         
-        // Check for user input every second
-        while (!scanner.hasNextLine()) {
-            try {
-                Thread.sleep(1000); // Check every second
-            } catch (InterruptedException e) {
-                logger.info("Interrupted, shutting down...");
-                break;
+        // Check for user input every second with proper shutdown
+        try {
+            while (engine.isRunning()) {
+                if (scanner.hasNextLine()) {
+                    break; // User pressed ENTER
+                }
+                Thread.sleep(100); // Check every 100ms
             }
+        } catch (InterruptedException e) {
+            logger.info("Interrupted, shutting down...");
         }
         
         // Read the ENTER key
