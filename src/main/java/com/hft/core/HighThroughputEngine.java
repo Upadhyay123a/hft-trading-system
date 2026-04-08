@@ -1,17 +1,27 @@
 package com.hft.core;
 
-import com.hft.exchange.BinanceConnector;
-import com.hft.monitoring.PerformanceMonitor;
-import com.hft.orderbook.OrderBook;
-import com.ft.risk.RiskManager;
-import com.hft.strategy.Strategy;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
+import com.ft.risk.RiskManager;
+import com.hft.exchange.BinanceConnector;
+import com.hft.monitoring.PerformanceMonitor;
+import com.hft.orderbook.OrderBook;
+import com.hft.strategy.Strategy;
 
 /**
  * High-Performance Multi-threaded Trading Engine
@@ -66,8 +76,10 @@ public class HighThroughputEngine {
                 @Override
                 public Thread newThread(Runnable r) {
                     Thread t = new Thread(r, "TickProcessor-" + threadNumber.getAndIncrement());
-                    t.setDaemon(false);
-                    t.setPriority(Thread.NORM_PRIORITY + 1); // Slightly higher priority
+                    // Use daemon threads so JVM can exit cleanly
+                    t.setDaemon(true);
+                    // Use normal priority to avoid starving other processes
+                    t.setPriority(Thread.NORM_PRIORITY);
                     return t;
                 }
             });
@@ -78,8 +90,8 @@ public class HighThroughputEngine {
                 @Override
                 public Thread newThread(Runnable r) {
                     Thread t = new Thread(r, "OrderExecutor-" + threadNumber.getAndIncrement());
-                    t.setDaemon(false);
-                    t.setPriority(Thread.NORM_PRIORITY + 2); // Higher priority for orders
+                    t.setDaemon(true);
+                    t.setPriority(Thread.NORM_PRIORITY);
                     return t;
                 }
             });
@@ -103,6 +115,8 @@ public class HighThroughputEngine {
         
         // Start tick collection thread
         Thread tickCollector = new Thread(this::tickCollectionLoop, "TickCollector");
+        tickCollector.setDaemon(true);
+        tickCollector.setPriority(Thread.NORM_PRIORITY);
         tickCollector.start();
         
         // Start tick processing threads

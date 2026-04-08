@@ -1,20 +1,21 @@
 package com.hft.exchange;
 
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import com.hft.core.SymbolMapper;
-import com.hft.core.Tick;
-import org.java_websocket.client.WebSocketClient;
-import org.java_websocket.handshake.ServerHandshake;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+
+import org.java_websocket.client.WebSocketClient;
+import org.java_websocket.handshake.ServerHandshake;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.hft.core.SymbolMapper;
+import com.hft.core.Tick;
 
 /**
  * Binance WebSocket connector for real-time market data
@@ -119,6 +120,11 @@ public class BinanceConnector {
                     logger.warn("Tick queue full, dropping tick (queue size: {})", tickQueue.size());
                     lastWarningTime = currentTime;
                 }
+            }
+            // Periodic debug trace for queue depth
+            long now = System.currentTimeMillis();
+            if (now % 60000 < 100) { // roughly every minute
+                logger.debug("Tick queue size: {}", tickQueue.size());
             }
             
         } catch (Exception e) {

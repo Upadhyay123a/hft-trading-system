@@ -1,22 +1,20 @@
 package com.hft.core.integration;
 
-import com.hft.core.Tick;
-import com.hft.core.Order;
-import com.hft.core.Trade;
-import com.hft.core.binary.BinaryProtocol;
-import com.hft.core.disruptor.DisruptorEngine;
-import com.hft.core.aeron.AeronMarketDataFeed;
-import com.hft.core.fix.FixProtocolHandler;
-import com.hft.orderbook.OrderBook;
-import com.ft.risk.RiskManager;
-import com.hft.strategy.Strategy;
-import com.hft.monitoring.PerformanceMonitor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.ft.risk.RiskManager;
+import com.hft.core.Order;
+import com.hft.core.aeron.AeronMarketDataFeed;
+import com.hft.core.binary.BinaryProtocol;
+import com.hft.core.disruptor.DisruptorEngine;
+import com.hft.core.fix.FixProtocolHandler;
+import com.hft.monitoring.PerformanceMonitor;
+import com.hft.strategy.Strategy;
 
 /**
  * Ultra-High Performance Trading Engine integrating Binary Encoding + LMAX Disruptor + Aeron + FIX
@@ -324,6 +322,8 @@ public class UltraHighPerformanceEngine {
         while (running.get()) {
             try {
                 Thread.sleep(5000); // Print stats every 5 seconds
+                // Lightweight heartbeat to show thread alive
+                logger.debug("UHP-Monitor heartbeat: running={}, ticksProcessed={}", running.get(), ticksProcessed.get());
                 printStatistics();
             } catch (InterruptedException e) {
                 break;

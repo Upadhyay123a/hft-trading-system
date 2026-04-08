@@ -68,8 +68,10 @@ public class DisruptorEngine {
             @Override
             public Thread newThread(Runnable r) {
                 Thread t = new Thread(r, "Disruptor-" + threadNumber.getAndIncrement());
-                t.setDaemon(false);
-                t.setPriority(Thread.MAX_PRIORITY); // MAX PRIORITY for ultra-low latency
+                // Use daemon threads so JVM can exit cleanly and avoid blocking shutdown
+                t.setDaemon(true);
+                // Use normal priority to avoid starving OS/gui threads
+                t.setPriority(Thread.NORM_PRIORITY);
                 return t;
             }
         };
@@ -80,7 +82,8 @@ public class DisruptorEngine {
             BUFFER_SIZE,
             threadFactory,
             ProducerType.MULTI, // Allow multiple producers
-            new BusySpinWaitStrategy() // ULTRA-LOW LATENCY - CPU intensive but fastest
+            // Use a yielding wait strategy to reduce CPU starvation on general-purpose OSes
+            new com.lmax.disruptor.YieldingWaitStrategy()
         );
         
         // Initialize event handlers

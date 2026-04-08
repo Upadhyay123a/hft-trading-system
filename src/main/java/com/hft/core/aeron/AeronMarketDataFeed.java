@@ -91,13 +91,13 @@ public class AeronMarketDataFeed {
         // Start market data subscriber
         Thread marketDataThread = new Thread(this::marketDataLoop, "Aeron-MarketData");
         marketDataThread.setDaemon(true);
-        marketDataThread.setPriority(Thread.MAX_PRIORITY - 1);
+        marketDataThread.setPriority(Thread.NORM_PRIORITY);
         marketDataThread.start();
         
         // Start order subscriber
         Thread orderThread = new Thread(this::orderLoop, "Aeron-Orders");
         orderThread.setDaemon(true);
-        orderThread.setPriority(Thread.MAX_PRIORITY - 1);
+        orderThread.setPriority(Thread.NORM_PRIORITY);
         orderThread.start();
         
         // Start WebSocket publisher
