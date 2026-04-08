@@ -77,10 +77,17 @@ public class RunAllBacktests {
             r6.ticksProcessed / (Math.max(1, r6.duration) / 1000.0)));
 
         // Save summary
-        try (PrintWriter pw = new PrintWriter(new FileWriter("logs/all_backtests_summary.csv"))) {
-            for (String line : summaryLines) pw.println(line);
+        try {
+            java.io.File outDir = new java.io.File("logs");
+            if (!outDir.exists()) outDir.mkdirs();
+            java.io.File out = new java.io.File(outDir, "all_backtests_summary.csv");
+            try (PrintWriter pw = new PrintWriter(new FileWriter(out))) {
+                for (String line : summaryLines) pw.println(line);
+            }
+            System.out.println("All backtests completed. Summary saved to " + out.getAbsolutePath());
+        } catch (Exception e) {
+            System.err.println("Failed to write summary: " + e.getMessage());
+            e.printStackTrace();
         }
-
-        System.out.println("All backtests completed. Summary saved to logs/all_backtests_summary.csv");
     }
 }
