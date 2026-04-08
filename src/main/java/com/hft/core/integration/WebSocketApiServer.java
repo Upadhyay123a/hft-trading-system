@@ -102,21 +102,25 @@ public class WebSocketApiServer implements AeronMarketDataFeed.WebSocketHandler 
     /**
      * Process WebSocket connections (mock implementation)
      */
-    @Override
-    public void processConnections() {
-        // In a real implementation, this would handle:
-        // - New connection establishment
-        // - Connection authentication
-        // - Message routing
-        // - Connection health monitoring
-        
-        // For now, we'll simulate connection processing
-        if (Math.random() < 0.01) { // 1% chance of new connection
-            simulateNewConnection();
-        }
-        
-        if (Math.random() < 0.005) { // 0.5% chance of connection loss
-            simulateConnectionLoss();
+    protected void processConnections() {
+        try {
+            // Simulate new connections (reduced rate)
+            if (Math.random() < 0.01 && connections.size() < 10) { // 1% chance, max 10 connections
+                simulateNewConnection();
+            }
+            
+            // Simulate connection loss (reduced rate)
+            if (Math.random() < 0.005 && !connections.isEmpty()) { // 0.5% chance
+                simulateConnectionLoss();
+            }
+            
+            // Clean up old connections periodically
+            if (System.currentTimeMillis() % 10000 < 500) { // Every 10 seconds
+                cleanupOldConnections();
+            }
+            
+        } catch (Exception e) {
+            logger.error("Error processing connections: {}", e.getMessage());
         }
     }
     
