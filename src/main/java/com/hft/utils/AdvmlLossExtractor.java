@@ -23,7 +23,16 @@ public class AdvmlLossExtractor {
         }
 
         Pattern p = Pattern.compile("Avg Loss:\\s*([0-9]*\\.?[0-9]+)");
-        List<String> lines = Files.readAllLines(log, StandardCharsets.UTF_8);
+
+        // Read file bytes and decode with UTF-8 replacing malformed input to avoid
+        // java.nio.charset.MalformedInputException when logs contain mixed encodings.
+        byte[] all = Files.readAllBytes(log);
+        java.nio.charset.CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder()
+            .onMalformedInput(java.nio.charset.CodingErrorAction.REPLACE)
+            .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPLACE);
+        String content = decoder.decode(java.nio.ByteBuffer.wrap(all)).toString();
+        List<String> lines = java.util.Arrays.asList(content.split("\r?\n"));
+
         List<Double> losses = lines.stream()
             .map(p::matcher)
             .filter(Matcher::find)
