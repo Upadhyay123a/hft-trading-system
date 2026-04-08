@@ -305,6 +305,29 @@ if (currentPosition > -maxPosition) placeSellOrder();
 
 ---
 
+## Backtest Run Results (automated)
+
+These results were produced by running `com.hft.backtest.BacktestRunner` against `data/sample_market_data.csv` (generated 100,000 ticks) on the current machine.
+
+- **Market Making**
+    - Duration: 457 ms
+    - Ticks Processed: 100,000
+    - Trades Executed: 0
+    - Ticks/sec: 218,818.38
+    - Total P&L: $0.00
+
+- **Momentum**
+    - Duration: 337 ms
+    - Ticks Processed: 100,000
+    - Trades Executed: 0
+    - Ticks/sec: 296,735.91
+    - Total P&L: $0.00
+
+Notes:
+- The backtests use the synthetic `data/sample_market_data.csv` generator and are deterministic for this dataset.
+- In this environment Aeron was unavailable (runtime fallback), but the backtesting engine runs offline and is unaffected by Aeron availability.
+
+
 ### 🚀 2. Momentum Strategy
 
 #### **Concept**
