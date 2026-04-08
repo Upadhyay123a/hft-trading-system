@@ -455,32 +455,28 @@ public class AIMarketIntelligence {
      * Generate mock Gemini response for testing
      */
     private String generateMockGeminiResponse(String prompt) {
-        return """
-            {
-              "candidates": [{
-                "content": {
-                  "parts": [{
-                    "text": "Market sentiment: BULLISH with 0.75 confidence. Key drivers: positive regulatory news, institutional adoption."
-                  }]
-                }
-              }]
-            }
-            """;
+        return "{\n" +
+               "  \"candidates\": [{\n" +
+               "    \"content\": {\n" +
+               "      \"parts\": [{\n" +
+               "        \"text\": \"Market sentiment: BULLISH with 0.75 confidence. Key drivers: positive regulatory news, institutional adoption.\"\n" +
+               "      }]\n" +
+               "    }\n" +
+               "  }]\n" +
+               "}";
     }
     
     /**
      * Generate mock Perplexity response for testing
      */
     private String generateMockPerplexityResponse(String prompt) {
-        return """
-            {
-              "choices": [{
-                "message": {
-                  "content": "Current trend: UPTREND with 0.8 strength. Key support at $42,000, resistance at $44,000."
-                }
-              }]
-            }
-            """;
+        return "{\n" +
+               "  \"choices\": [{\n" +
+               "    \"message\": {\n" +
+               "      \"content\": \"Current trend: UPTREND with 0.8 strength. Key support at $42,000, resistance at $44,000.\"\n" +
+               "    }\n" +
+               "  }]\n" +
+               "}";
     }
     
     /**
