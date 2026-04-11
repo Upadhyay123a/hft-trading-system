@@ -185,8 +185,8 @@ public class RealTimeMLProcessor {
                     }
                 }
                 
-                // SAFETY: Small delay to prevent CPU spinning
-                Thread.sleep(25); // SAFETY: 25ms to prevent CPU starvation
+                // Small delay to prevent CPU spinning
+                Thread.sleep(0, 10000); // 10 microseconds
                 
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -234,7 +234,7 @@ public class RealTimeMLProcessor {
                     }
                 }
                 
-                Thread.sleep(50); // SAFETY: 50ms to prevent CPU starvation
+                Thread.sleep(0, 5000); // 5 microseconds
                 
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -304,7 +304,7 @@ public class RealTimeMLProcessor {
                     }
                 }
                 
-                Thread.sleep(100); // SAFETY: 100ms to prevent CPU starvation
+                Thread.sleep(0, 10000); // 10 microseconds
                 
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -335,7 +335,7 @@ public class RealTimeMLProcessor {
                     updateRLAgent(prediction);
                 }
                 
-                Thread.sleep(50); // SAFETY: 50ms to prevent CPU starvation
+                Thread.sleep(0, 5000); // 5 microseconds
                 
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
