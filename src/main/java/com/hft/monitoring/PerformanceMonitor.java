@@ -118,26 +118,33 @@ public class PerformanceMonitor {
     
     /**
      * Print performance report
+     * FIX: replaced Python-style {:.1f} format specifiers with String.format()
+     * because SLF4J only supports plain {} placeholders — {:.1f} was printing as a literal string
      */
     public void printReport() {
         PerformanceSummary summary = getSummary();
         
         logger.info("=== Performance Report ===");
-        logger.info("Uptime: {:.1f}s", summary.uptimeSeconds);
-        logger.info("Operations/sec: {}", summary.operationsPerSecond);
-        logger.info("Avg Latency: {:.3f}ms", summary.avgLatencyMs);
-        logger.info("Memory Usage: {:.1f}%", summary.memoryUsagePercent);
-        logger.info("Thread Count: {}", summary.threadCount);
+        logger.info("Uptime: {} s",         String.format("%.1f", summary.uptimeSeconds));
+        logger.info("Operations/sec: {}",   summary.operationsPerSecond);
+        logger.info("Avg Latency: {} ms",   String.format("%.3f", summary.avgLatencyMs));
+        logger.info("Memory Usage: {} %",   String.format("%.1f", summary.memoryUsagePercent));
+        logger.info("Thread Count: {}",     summary.threadCount);
         
         logger.info("--- Latency by Operation ---");
         summary.latencyStats.forEach((op, stats) -> {
-            logger.info("{}: count={}, avg={:.3f}ms, p50={:.3f}ms, p95={:.3f}ms, p99={:.3f}ms",
-                op, stats.count, stats.avgMs, stats.p50Ms, stats.p95Ms, stats.p99Ms);
+            logger.info("{}: count={}, avg={} ms, p50={} ms, p95={} ms, p99={} ms",
+                op, stats.count,
+                String.format("%.3f", stats.avgMs),
+                String.format("%.3f", stats.p50Ms),
+                String.format("%.3f", stats.p95Ms),
+                String.format("%.3f", stats.p99Ms));
         });
         
         logger.info("--- Throughput by Operation ---");
         summary.throughputStats.forEach((op, stats) -> {
-            logger.info("{}: {}/sec (avg over 60s)", op, stats.eventsPerSecond);
+            logger.info("{}: {}/sec (avg over 60s)",
+                op, String.format("%.1f", stats.eventsPerSecond));
         });
         
         logger.info("--- Custom Metrics ---");
