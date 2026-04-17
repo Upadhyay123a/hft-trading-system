@@ -3,7 +3,6 @@ package com.hft;
 import com.hft.core.SymbolMapper;
 import com.hft.core.Tick;
 import com.hft.core.integration.UltraHighPerformanceEngine;
-import com.hft.exchange.BinanceConnector;
 import com.hft.exchange.CsvDataConnector;
 import com.ft.risk.RiskManager;
 import com.hft.strategy.MarketMakingStrategy;
@@ -15,8 +14,6 @@ import com.hft.strategy.Strategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
-import java.util.List;
 import java.util.Scanner;
 
 /**
@@ -107,7 +104,7 @@ public class Main {
                     if (tick != null) {
                         // Send tick to engine for processing
                         engine.processTick(tick.timestamp, tick.symbolId, 
-                                          tick.getPrice(), tick.volume, tick.side);
+                                          tick.price, tick.volume, tick.side);
                     }
                 }
             } catch (InterruptedException e) {
@@ -161,6 +158,8 @@ public class Main {
             Thread.currentThread().interrupt();
         } catch (Exception e) {
             logger.error("Unexpected error in main loop, forcing shutdown", e);
+        } finally {
+            scanner.close();
         }
         
         // Shutdown
@@ -183,89 +182,97 @@ public class Main {
     private static int chooseEngine() {
         Scanner scanner = new Scanner(System.in);
         
-        System.out.println("\nChoose Trading Engine:");
-        System.out.println("1. Standard Engine (single-threaded, simulation only)");
-        System.out.println("2. High-Throughput Engine (multi-threaded, simulation only)");
-        System.out.println("3. Real Trading Engine (actual exchange trading - requires API keys)");
-        System.out.print("Enter choice (1-3): ");
-        
-        int choice = 1;
         try {
-            choice = scanner.nextInt();
-        } catch (Exception e) {
-            // Default to standard engine
+            System.out.println("\nChoose Trading Engine:");
+            System.out.println("1. Standard Engine (single-threaded, simulation only)");
+            System.out.println("2. High-Throughput Engine (multi-threaded, simulation only)");
+            System.out.println("3. Real Trading Engine (actual exchange trading - requires API keys)");
+            System.out.print("Enter choice (1-3): ");
+            
+            int choice = 1;
+            try {
+                choice = scanner.nextInt();
+            } catch (Exception e) {
+                // Default to standard engine
+            }
+            
+            return choice;
+        } finally {
+            scanner.close();
         }
-        
-        return choice;
     }
     
     private static Strategy chooseStrategy() {
         Scanner scanner = new Scanner(System.in);
         
-        System.out.println("\nChoose Trading Strategy:");
-        System.out.println("1. Market Making (provides liquidity, captures spread)");
-        System.out.println("2. Momentum (follows price trends)");
-        System.out.println("3. Triangular Arbitrage (exploits cross-currency inefficiencies)");
-        System.out.println("4. Statistical Arbitrage (mean reversion, pairs trading)");
-        System.out.println("5. AI-Enhanced (Gemini/Perplexity AI-powered trading)");
-        System.out.print("Enter choice (1-5): ");
-        
-        int choice = 1;
         try {
-            choice = scanner.nextInt();
-        } catch (Exception e) {
-            // Default to market making
-        }
-        
-        if (choice == 2) {
-            // Momentum strategy
-            logger.info("Creating Momentum Strategy");
-            return new MomentumStrategy(
-                SymbolMapper.BTCUSDT,  // Trade BTC
-                20,                     // Look back 20 ticks
-                0.05,                   // 0.05% threshold
-                1,                      // Order size (BTC units)
-                10                      // Max position
-            );
-        } else if (choice == 3) {
-            // Triangular arbitrage strategy
-            logger.info("Creating Triangular Arbitrage Strategy");
-            return new TriangularArbitrageStrategy(
-                SymbolMapper.BTCUSDT,  // BTC/USDT (base pair)
-                SymbolMapper.ETHUSDT,  // ETH/USDT (quote pair)
-                2,                     // ETH/BTC (cross pair - need to register)
-                0.001,                 // 0.1% minimum profit
-                1000,                  // $1000 order size
-                0.005                  // 0.5% max slippage
-            );
-        } else if (choice == 4) {
-            // Statistical arbitrage strategy
-            logger.info("Creating Statistical Arbitrage Strategy");
-            int[] pairs = {SymbolMapper.BTCUSDT, SymbolMapper.ETHUSDT};
-            return new StatisticalArbitrageStrategy(
-                pairs,                  // BTC/USDT and ETH/USDT pair
-                100,                   // 100 tick lookback period
-                2.0,                   // 2.0 Z-score threshold
-                0.001,                 // 0.1% minimum spread
-                1                      // 1 unit order size
-            );
-        } else if (choice == 5) {
-            // AI-Enhanced strategy
-            logger.info("Creating AI-Enhanced Strategy");
-            return new AIEnhancedStrategy(
-                SymbolMapper.BTCUSDT,  // Trade BTC
-                1,                      // Base order size
-                10                      // Max position
-            );
-        } else {
-            // Market making strategy (default)
-            logger.info("Creating Market Making Strategy");
-            return new MarketMakingStrategy(
-                SymbolMapper.BTCUSDT,  // Trade BTC
-                0.02,                   // 0.02% spread
-                1,                      // Order size
-                5                       // Max position
-            );
+            System.out.println("\nChoose Trading Strategy:");
+            System.out.println("1. Market Making (provides liquidity, captures spread)");
+            System.out.println("2. Momentum (follows price trends)");
+            System.out.println("3. Triangular Arbitrage (exploits cross-currency inefficiencies)");
+            System.out.println("4. Statistical Arbitrage (mean reversion, pairs trading)");
+            System.out.println("5. AI-Enhanced (Gemini/Perplexity AI-powered trading)");
+            System.out.print("Enter choice (1-5): ");
+            
+            int choice = 1;
+            try {
+                choice = scanner.nextInt();
+            } catch (Exception e) {
+                // Default to market making
+            }
+            
+            if (choice == 2) {
+                // Momentum strategy
+                logger.info("Creating Momentum Strategy");
+                return new MomentumStrategy(
+                    SymbolMapper.BTCUSDT,  // Trade BTC
+                    20,                     // Look back 20 ticks
+                    0.05,                   // 0.05% threshold
+                    1,                      // Order size (BTC units)
+                    10                      // Max position
+                );
+            } else if (choice == 3) {
+                // Triangular arbitrage strategy
+                logger.info("Creating Triangular Arbitrage Strategy");
+                return new TriangularArbitrageStrategy(
+                    SymbolMapper.BTCUSDT,  // BTC/USDT (base pair)
+                    SymbolMapper.ETHUSDT,  // ETH/USDT (quote pair)
+                    2,                     // ETH/BTC (cross pair - need to register)
+                    0.001,                 // 0.1% minimum profit
+                    1000,                  // $1000 order size
+                    0.005                  // 0.5% max slippage
+                );
+            } else if (choice == 4) {
+                // Statistical arbitrage strategy
+                logger.info("Creating Statistical Arbitrage Strategy");
+                int[] pairs = {SymbolMapper.BTCUSDT, SymbolMapper.ETHUSDT};
+                return new StatisticalArbitrageStrategy(
+                    pairs,                  // BTC/USDT and ETH/USDT pair
+                    100,                   // 100 tick lookback period
+                    2.0,                   // 2.0 Z-score threshold
+                    0.001,                 // 0.1% minimum spread
+                    1                      // 1 unit order size
+                );
+            } else if (choice == 5) {
+                // AI-Enhanced strategy
+                logger.info("Creating AI-Enhanced Strategy");
+                return new AIEnhancedStrategy(
+                    SymbolMapper.BTCUSDT,  // Trade BTC
+                    1,                      // Base order size
+                    10                      // Max position
+                );
+            } else {
+                // Market making strategy (default)
+                logger.info("Creating Market Making Strategy");
+                return new MarketMakingStrategy(
+                    SymbolMapper.BTCUSDT,  // Trade BTC
+                    0.02,                   // 0.02% spread
+                    1,                      // Order size
+                    5                       // Max position
+                );
+            }
+        } finally {
+            scanner.close();
         }
     }
 }
