@@ -5,7 +5,7 @@ import com.hft.core.Order;
 import com.hft.core.Trade;
 import com.hft.core.binary.BinaryProtocol;
 import com.hft.orderbook.OrderBook;
-import com.ft.risk.RiskManager;
+import com.hft.risk.RiskManager;
 import com.hft.strategy.Strategy;
 import com.hft.monitoring.PerformanceMonitor;
 import org.slf4j.Logger;
@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -33,6 +34,10 @@ public class DisruptorEngine {
     // Disruptor configuration
     private static final int BUFFER_SIZE = 1024 * 256; // 256K buffer - LARGER for higher throughput
     private static final int NUM_PROCESSORS = Runtime.getRuntime().availableProcessors();
+
+    // FIX 1: message type byte constants so handlers can tell tick vs order apart
+    private static final byte MSG_TYPE_TICK  = BinaryProtocol.TICK_MESSAGE;
+    private static final byte MSG_TYPE_ORDER = BinaryProtocol.ORDER_MESSAGE;
     
     // Core components
     private final Strategy strategy;
@@ -45,7 +50,7 @@ public class DisruptorEngine {
     
     // Data structures
     private final Map<Integer, OrderBook> orderBooks = new ConcurrentHashMap<>();
-    private final ByteBuffer decodeBuffer = ByteBuffer.allocate(256);
+    // FIX 2: removed unused decodeBuffer field (was declared but never referenced)
     
     // Performance tracking
     private final AtomicLong ticksProcessed = new AtomicLong(0);
@@ -108,29 +113,35 @@ public class DisruptorEngine {
     
     /**
      * Set up event processing pipeline
+     *
+     * FIX 1: Previously both TickEventHandler and OrderEventHandler fired on EVERY event,
+     * meaning a tick event was also decoded as an order (corrupt data) and vice versa.
+     * Fix: use a single CombinedEventHandler per processor that reads the message type
+     * byte first and routes to the correct logic — exactly like handleBinaryMessage()
+     * does in UltraHighPerformanceEngine.
      */
+    @SuppressWarnings("unchecked")
     private void setupEventProcessors() {
-        // Create event processor group for tick handlers
-        EventHandler<byte[]>[] tickEventHandlers = new EventHandler[NUM_PROCESSORS];
+        // Single handler per processor — reads MSG_TYPE byte first, then routes
+        EventHandler<byte[]>[] combinedHandlers = new EventHandler[NUM_PROCESSORS];
         for (int i = 0; i < NUM_PROCESSORS; i++) {
-            tickEventHandlers[i] = tickHandlers[i];
+            final int idx = i;
+            combinedHandlers[i] = (event, sequence, endOfBatch) -> {
+                if (event[0] == MSG_TYPE_TICK) {
+                    tickHandlers[idx].onEvent(event, sequence, endOfBatch);
+                } else if (event[0] == MSG_TYPE_ORDER) {
+                    orderHandlers[idx].onEvent(event, sequence, endOfBatch);
+                }
+            };
         }
-        
-        // Create event processor group for order handlers  
-        EventHandler<byte[]>[] orderEventHandlers = new EventHandler[NUM_PROCESSORS];
-        for (int i = 0; i < NUM_PROCESSORS; i++) {
-            orderEventHandlers[i] = orderHandlers[i];
-        }
-        
-        // Set up worker pool for parallel processing
+
+        // Worker pool for additional analytics / monitoring
         WorkHandler<byte[]>[] workHandlers = new WorkHandler[NUM_PROCESSORS];
         for (int i = 0; i < NUM_PROCESSORS; i++) {
             workHandlers[i] = new MarketDataWorker(i);
         }
-        
-        // Configure event processing pipeline
-        disruptor.handleEventsWith(tickEventHandlers)
-                 .then(orderEventHandlers)
+
+        disruptor.handleEventsWith(combinedHandlers)
                  .thenHandleEventsWithWorkerPool(workHandlers);
     }
     
@@ -142,6 +153,7 @@ public class DisruptorEngine {
         try {
             byte[] event = ringBuffer.get(sequence);
             ByteBuffer buffer = ByteBuffer.wrap(event);
+            buffer.clear(); // FIX 3: reset position — ring buffer slots are reused
             
             // Encode tick using binary protocol
             BinaryProtocol.encodeTick(buffer, timestamp, symbolId, price, volume, side);
@@ -159,6 +171,7 @@ public class DisruptorEngine {
         try {
             byte[] event = ringBuffer.get(sequence);
             ByteBuffer buffer = ByteBuffer.wrap(event);
+            buffer.clear(); // FIX 3: reset position — ring buffer slots are reused
             
             // Encode order using binary protocol
             BinaryProtocol.encodeOrder(buffer, order.orderId, order.symbolId, order.price,
@@ -299,7 +312,14 @@ public class DisruptorEngine {
     public void stop() {
         logger.info("Stopping Disruptor Engine");
         running.set(false);
-        disruptor.shutdown();
+        try {
+            // FIX 4: wait up to 10 s for in-flight events to drain before halting,
+            // instead of disruptor.shutdown() which returns immediately and can lose events
+            disruptor.shutdown(10, TimeUnit.SECONDS);
+        } catch (TimeoutException e) {
+            logger.warn("Disruptor did not drain within 10 seconds, forcing halt");
+            disruptor.halt();
+        }
         logger.info("Disruptor Engine stopped");
     }
     
