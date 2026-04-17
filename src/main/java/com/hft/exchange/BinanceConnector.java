@@ -25,7 +25,7 @@ public class BinanceConnector {
     private static final String BINANCE_WS_URL = "wss://stream.binance.com:9443/ws";
     
     private WebSocketClient client;
-    private final BlockingQueue<Tick> tickQueue = new LinkedBlockingQueue<>(10000);
+    private final BlockingQueue<Tick> tickQueue = new LinkedBlockingQueue<>(1000); // Reduced for low-resource systems
     private final List<String> symbols;
     private volatile boolean connected = false;
     
@@ -113,11 +113,15 @@ public class BinanceConnector {
             tick.volume = (long)(quantity * 100000); // Scale volume
             tick.side = (byte)(isBuyerMaker ? 1 : 0); // Buyer maker means sell
             
-            // Add to queue (non-blocking)
+            // Add to queue (non-blocking with better management)
             if (!tickQueue.offer(tick)) {
+                // Queue is full, remove oldest tick and add new one
+                tickQueue.poll(); // Remove oldest
+                tickQueue.offer(tick); // Add new tick
+                
                 long currentTime = System.currentTimeMillis();
                 if (currentTime - lastWarningTime > WARNING_INTERVAL) {
-                    logger.warn("Tick queue full, dropping tick (queue size: {})", tickQueue.size());
+                    logger.warn("Tick queue full, dropped oldest tick (queue size: {})", tickQueue.size());
                     lastWarningTime = currentTime;
                 }
             }
