@@ -115,8 +115,14 @@ public class Main {
             long lastStatusTime = startTime;
  
             while (engine.isRunning() && (System.currentTimeMillis() - startTime) < maxRunTime) {
-                Thread.sleep(1000);
- 
+                // Check for interrupt every 100ms for better responsiveness
+                if (Thread.currentThread().isInterrupted()) {
+                    logger.info("Main thread interrupted - initiating shutdown...");
+                    break;
+                }
+                
+                Thread.sleep(100);
+                
                 long currentTime = System.currentTimeMillis();
                 if (currentTime - lastStatusTime > 10000) {
                     long remainingTime = maxRunTime - (currentTime - startTime);
