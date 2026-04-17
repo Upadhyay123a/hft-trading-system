@@ -52,7 +52,7 @@ public class BinanceConnector {
 
     private WebSocketClient client;
 
-    private final BlockingQueue<Tick> tickQueue = new LinkedBlockingQueue<>(10000);
+    private final BlockingQueue<Tick> tickQueue = new LinkedBlockingQueue<>(50000); // Increased capacity
 
     private final List<String> symbols;
 
