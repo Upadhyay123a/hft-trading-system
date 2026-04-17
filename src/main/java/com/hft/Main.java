@@ -1,6 +1,7 @@
 package com.hft;
 
 import com.hft.core.SymbolMapper;
+import com.hft.core.Tick;
 import com.hft.core.integration.UltraHighPerformanceEngine;
 import com.hft.exchange.BinanceConnector;
 import com.ft.risk.RiskManager;
@@ -98,6 +99,28 @@ public class Main {
         
         // Start the engine
         engine.start();
+        
+        // CRITICAL: Connect Binance data to the engine
+        logger.info("Connecting Binance data stream to engine...");
+        Thread dataThread = new Thread(() -> {
+            try {
+                while (engine.isRunning()) {
+                    Tick tick = connector.getNextTick(); // Get tick from Binance
+                    if (tick != null) {
+                        // Send tick to engine for processing
+                        engine.processTick(tick.timestamp, tick.symbolId, 
+                                          tick.getPrice(), tick.volume, tick.side);
+                    }
+                }
+            } catch (InterruptedException e) {
+                logger.info("Data thread interrupted");
+                Thread.currentThread().interrupt();
+            } catch (Exception e) {
+                logger.error("Error in data thread", e);
+            }
+        }, "Binance-Data-Thread");
+        dataThread.setDaemon(true);
+        dataThread.start();
         
         // Wait for user input to stop
         logger.info("\n=== TRADING SYSTEM RUNNING ===");
