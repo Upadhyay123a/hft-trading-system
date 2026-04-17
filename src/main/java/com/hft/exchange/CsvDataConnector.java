@@ -80,7 +80,7 @@ public class CsvDataConnector {
                         // Debug: Log first few ticks
                         if (lineCount < 5) {
                             logger.info("CSV Tick {}: price={}, volume={}", 
-                                       lineCount, tick.getPrice(), tick.volume);
+                                       lineCount, tick.getPriceAsDouble(), tick.volume);
                         }
                         
                         lineCount++;
