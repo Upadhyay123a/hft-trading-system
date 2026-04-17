@@ -108,10 +108,10 @@ public class Main {
  
         try {
             logger.info("System started. Press Ctrl+C to stop...");
-            logger.info("Automatic safety shutdown in 60 seconds...");
+            logger.info("Automatic safety shutdown in 5 minutes (300 seconds)...");
  
             long startTime = System.currentTimeMillis();
-            long maxRunTime = 60000;
+            long maxRunTime = 300000; // 5 minutes for more trading opportunities
             long lastStatusTime = startTime;
  
             while (engine.isRunning() && (System.currentTimeMillis() - startTime) < maxRunTime) {
@@ -188,7 +188,7 @@ public class Main {
                     logger.info("Creating Statistical Arbitrage Strategy");
                     int[] pairs = {SymbolMapper.BTCUSDT, SymbolMapper.ETHUSDT};
                     return new StatisticalArbitrageStrategy(
-                        pairs, 100, 2.0, 0.001, 1
+                        pairs, 30, 1.2, 0.0005, 1
                     );
  
                 case 5:
