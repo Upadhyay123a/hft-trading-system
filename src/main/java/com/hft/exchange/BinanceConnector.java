@@ -46,8 +46,8 @@ public class BinanceConnector {
      */
     public void connect() {
         try {
-            // Build stream URL for multiple symbols
-            StringBuilder streamUrl = new StringBuilder(BINANCE_WS_URL + "/");
+            // Build stream URL for multiple symbols (Binance combined streams)
+            StringBuilder streamUrl = new StringBuilder(BINANCE_WS_URL + "/stream?streams=");
             for (int i = 0; i < symbols.size(); i++) {
                 if (i > 0) streamUrl.append("/");
                 streamUrl.append(symbols.get(i).toLowerCase()).append("@trade");
@@ -65,9 +65,13 @@ public class BinanceConnector {
                 @Override
                 public void onMessage(String message) {
                     try {
+                        // Debug: Log first few messages
+                        if (tickQueue.size() < 10) {
+                            logger.info("Received message: {}", message);
+                        }
                         processMessage(message);
                     } catch (Exception e) {
-                        logger.error("Error processing message", e);
+                        logger.error("Error processing message: {}", message, e);
                     }
                 }
                 
@@ -98,12 +102,15 @@ public class BinanceConnector {
         try {
             JsonObject json = JsonParser.parseString(message).getAsJsonObject();
             
+            // Combined stream format: {"stream": "btcusdt@trade", "data": {...}}
+            JsonObject tradeData = json.has("data") ? json.getAsJsonObject("data") : json;
+            
             // Binance trade stream format
-            String symbol = json.get("s").getAsString();
-            double price = json.get("p").getAsDouble();
-            double quantity = json.get("q").getAsDouble();
-            long timestamp = json.get("T").getAsLong() * 1_000_000; // Convert to nanos
-            boolean isBuyerMaker = json.get("m").getAsBoolean();
+            String symbol = tradeData.get("s").getAsString();
+            double price = tradeData.get("p").getAsDouble();
+            double quantity = tradeData.get("q").getAsDouble();
+            long timestamp = tradeData.get("T").getAsLong() * 1_000_000; // Convert to nanos
+            boolean isBuyerMaker = tradeData.get("m").getAsBoolean();
             
             // Create tick
             Tick tick = new Tick();
