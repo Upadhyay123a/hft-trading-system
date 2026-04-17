@@ -41,6 +41,9 @@ public class UltraHighPerformanceEngine {
     
     // WebSocket integration
     private final WebSocketApiServer webSocketServer;
+
+    // FIX 1: store monitoringThread as a field so stop() can interrupt it immediately
+    private Thread monitoringThread;
     
     public UltraHighPerformanceEngine(Strategy strategy, RiskManager riskManager) {
         this.strategy = strategy;
@@ -103,8 +106,9 @@ public class UltraHighPerformanceEngine {
         aeronFeed.start();
         webSocketServer.start();
         
-        // Start performance monitoring
-        Thread monitoringThread = new Thread(this::monitoringLoop, "UHP-Engine-Monitor");
+        // FIX 2: assign to field (removed "Thread" keyword before monitoringThread)
+        // so stop() can interrupt it later
+        monitoringThread = new Thread(this::monitoringLoop, "UHP-Engine-Monitor");
         monitoringThread.setDaemon(true);
         monitoringThread.start();
         
@@ -118,6 +122,12 @@ public class UltraHighPerformanceEngine {
     public void stop() {
         logger.info("Stopping Ultra-High Performance Engine");
         running.set(false);
+
+        // FIX 3: interrupt monitor thread immediately instead of Thread.sleep(1000)
+        // which was blocking the shutdown hook for a full second
+        if (monitoringThread != null) {
+            monitoringThread.interrupt();
+        }
         
         // Stop components in reverse order
         try {
@@ -130,15 +140,15 @@ public class UltraHighPerformanceEngine {
             if (disruptorEngine != null) {
                 disruptorEngine.stop();
             }
-            
-            // Wait for threads to stop
-            Thread.sleep(1000);
-            
+
+            // FIX 4: shutdown PerformanceMonitor so its thread also exits cleanly
+            // without this its thread kept the JVM alive after everything else stopped
+            performanceMonitor.shutdown();
+
             printFinalStatistics();
             
-        } catch (InterruptedException e) {
-            logger.info("Interrupted during shutdown");
-            Thread.currentThread().interrupt();
+        } catch (Exception e) {
+            logger.info("Exception during shutdown: {}", e.getMessage());
         }
         
         logger.info("Ultra-High Performance Engine stopped");
