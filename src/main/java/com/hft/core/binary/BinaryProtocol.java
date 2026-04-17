@@ -9,8 +9,8 @@ import java.nio.ByteBuffer;
 public class BinaryProtocol {
     
     // Message types
-    public static final byte TICK_MESSAGE = 1;
-    public static final byte ORDER_MESSAGE = 2;
+    public static final byte TICK_MESSAGE = 2;
+    public static final byte ORDER_MESSAGE = 1;
     public static final byte TRADE_MESSAGE = 3;
     public static final byte MARKET_DATA_MESSAGE = 4;
     
