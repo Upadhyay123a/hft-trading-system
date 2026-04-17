@@ -54,8 +54,8 @@ public class Main {
             }
         }, "Safety-Shutdown-Hook"));
         
-        // Configure symbols to trade
-        List<String> symbols = Arrays.asList("BTCUSDT", "ETHUSDT");
+        // Configure symbols to trade (single symbol for testing)
+        List<String> symbols = Arrays.asList("BTCUSDT");
         
         // Create exchange connector
         logger.info("Connecting to Binance...");
