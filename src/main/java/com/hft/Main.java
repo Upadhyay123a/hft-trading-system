@@ -4,6 +4,7 @@ import com.hft.core.SymbolMapper;
 import com.hft.core.Tick;
 import com.hft.core.integration.UltraHighPerformanceEngine;
 import com.hft.exchange.BinanceConnector;
+import com.hft.exchange.CsvDataConnector;
 import com.ft.risk.RiskManager;
 import com.hft.strategy.MarketMakingStrategy;
 import com.hft.strategy.MomentumStrategy;
@@ -54,12 +55,9 @@ public class Main {
             }
         }, "Safety-Shutdown-Hook"));
         
-        // Configure symbols to trade (single symbol for testing)
-        List<String> symbols = Arrays.asList("BTCUSDT");
-        
-        // Create exchange connector
-        logger.info("Connecting to Binance...");
-        BinanceConnector connector = new BinanceConnector(symbols);
+        // Use CSV data for testing (more reliable than live Binance)
+        logger.info("Using CSV data for testing...");
+        CsvDataConnector connector = new CsvDataConnector("data/binance_BTCUSDT_1m_proper.csv");
         connector.connect();
         
         // Wait for connection
@@ -74,7 +72,7 @@ public class Main {
         }
         
         if (!connector.isConnected()) {
-            logger.error("Failed to connect to Binance");
+            logger.error("Failed to connect to CSV data source");
             return;
         }
         
@@ -100,12 +98,12 @@ public class Main {
         // Start the engine
         engine.start();
         
-        // CRITICAL: Connect Binance data to the engine
-        logger.info("Connecting Binance data stream to engine...");
+        // CRITICAL: Connect CSV data to the engine
+        logger.info("Connecting CSV data stream to engine...");
         Thread dataThread = new Thread(() -> {
             try {
                 while (engine.isRunning()) {
-                    Tick tick = connector.getNextTick(); // Get tick from Binance
+                    Tick tick = connector.getNextTick(); // Get tick from CSV
                     if (tick != null) {
                         // Send tick to engine for processing
                         engine.processTick(tick.timestamp, tick.symbolId, 
@@ -118,13 +116,13 @@ public class Main {
             } catch (Exception e) {
                 logger.error("Error in data thread", e);
             }
-        }, "Binance-Data-Thread");
+        }, "CSV-Data-Thread");
         dataThread.setDaemon(true);
         dataThread.start();
         
         // Wait for user input to stop
         logger.info("\n=== TRADING SYSTEM RUNNING ===");
-        logger.info("System is processing live market data from Binance");
+        logger.info("System is processing live market data from CSV");
         logger.info("=====================================\n");
         
         Scanner scanner = new Scanner(System.in);
