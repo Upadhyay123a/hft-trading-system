@@ -5,7 +5,7 @@ import com.hft.core.Order;
 import com.hft.core.Trade;
 import com.hft.core.binary.BinaryProtocol;
 import com.hft.orderbook.OrderBook;
-import com.hft.risk.RiskManager;
+import com.ft.risk.RiskManager;
 import com.hft.strategy.Strategy;
 import com.hft.monitoring.PerformanceMonitor;
 import org.slf4j.Logger;
