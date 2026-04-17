@@ -37,12 +37,13 @@ public class Main {
                     engineRef[0].stop();
                 }
  
-                Thread.sleep(2000);
+                // Force exit immediately - no delays
+                logger.warn("SAFETY: Force exiting JVM NOW");
+                System.exit(1);
  
-            } catch (InterruptedException e) {
-                logger.info("Shutdown hook interrupted");
             } catch (Exception e) {
-                logger.error("Error in shutdown hook", e);
+                logger.error("Error in shutdown hook, forcing exit", e);
+                System.exit(1);
             }
         }, "Safety-Shutdown-Hook"));
  
