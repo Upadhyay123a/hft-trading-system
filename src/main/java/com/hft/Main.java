@@ -10,6 +10,8 @@ import com.hft.strategy.MomentumStrategy;
 import com.hft.strategy.StatisticalArbitrageStrategy;
 import com.hft.strategy.TriangularArbitrageStrategy;
 import com.hft.strategy.AIEnhancedStrategy;
+// FIX: added missing ML strategy import (issue 4)
+import com.hft.strategy.MLEnhancedMarketMakingStrategy;
 import com.hft.strategy.Strategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -215,29 +217,30 @@ public class Main {
     private static Strategy chooseStrategy() {
         try (Scanner scanner = new Scanner(System.in)) {
             System.out.println("\nChoose Trading Strategy:");
-            System.out.println("1. Market Making  – provides liquidity, captures spread");
-            System.out.println("2. Momentum       – follows price trends");
-            System.out.println("3. Triangular Arb – exploits cross-currency inefficiencies");
-            System.out.println("4. Stat Arb       – mean reversion / pairs trading");
-            System.out.println("5. AI-Enhanced    – Gemini/Perplexity AI-powered trading");
-            System.out.print("Enter choice (1-5): ");
+            System.out.println("1. Market Making      – provides liquidity, captures spread");
+            System.out.println("2. Momentum           – follows price trends");
+            System.out.println("3. Triangular Arb     – exploits cross-currency inefficiencies");
+            System.out.println("4. Stat Arb           – mean reversion / pairs trading");
+            System.out.println("5. AI-Enhanced        – Gemini/Perplexity AI-powered trading");
+            // FIX: added option 6 for ML strategy (issue 4)
+            System.out.println("6. ML-Enhanced MM     – AI-powered market making with regime detection");
+            System.out.print("Enter choice (1-6): ");
 
-            // FIX: was `try { choice = scanner.nextInt(); } catch (Exception ignored) {}`
-            // which silently swallowed all errors with no feedback to user or logs.
-            // Now: InputMismatchException (non-numeric input) is caught and logged clearly.
-            //      Out-of-range numbers (e.g. 0, 6, 99) are also caught and logged clearly.
-            //      Both cases fall back to default strategy (Market Making) with a visible message.
+            // FIX (from previous session): was silent catch(Exception ignored)
+            // Now: InputMismatchException is caught and logged clearly.
+            //      Out-of-range numbers are also caught and logged clearly.
+            //      Both cases fall back to Market Making with a visible message.
             int choice = 1; // default to Market Making
             try {
                 choice = scanner.nextInt();
-                if (choice < 1 || choice > 5) {
-                    logger.warn("Invalid strategy choice: {}. Valid range is 1-5. Defaulting to Market Making.", choice);
-                    System.out.println("Invalid choice '" + choice + "'. Must be between 1 and 5. Defaulting to Market Making.");
+                if (choice < 1 || choice > 6) {
+                    logger.warn("Invalid strategy choice: {}. Valid range is 1-6. Defaulting to Market Making.", choice);
+                    System.out.println("Invalid choice '" + choice + "'. Must be between 1 and 6. Defaulting to Market Making.");
                     choice = 1;
                 }
             } catch (java.util.InputMismatchException e) {
                 logger.warn("Invalid strategy input — not a number. Defaulting to Market Making.");
-                System.out.println("Invalid input — please enter a number between 1 and 5. Defaulting to Market Making.");
+                System.out.println("Invalid input — please enter a number between 1 and 6. Defaulting to Market Making.");
                 choice = 1;
             }
 
@@ -256,6 +259,10 @@ public class Main {
                 case 5:
                     logger.info("Strategy: AI-Enhanced");
                     return new AIEnhancedStrategy(SymbolMapper.BTCUSDT, 1, 10);
+                // FIX: added case 6 for ML-Enhanced strategy (issue 4)
+                case 6:
+                    logger.info("Strategy: ML-Enhanced Market Making");
+                    return new MLEnhancedMarketMakingStrategy(SymbolMapper.BTCUSDT, 0.02, 1, 5);
                 default:
                     logger.info("Strategy: Market Making");
                     return new MarketMakingStrategy(SymbolMapper.BTCUSDT, 0.02, 1, 5);
