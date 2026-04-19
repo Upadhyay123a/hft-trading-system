@@ -426,7 +426,7 @@ public class AdvancedOrderTypes {
             
             // FIX: Use explicit type instead of var to avoid API mismatch ambiguity;
             // getPerformanceStats() return type is used explicitly for safe field access
-            RealTimeMLProcessor.PerformanceStats mlStats = mlProcessor.getPerformanceStats();
+            RealTimeMLProcessor.MLPerformanceStats mlStats = mlProcessor.getPerformanceStats();
             double predictedPrice = mlStats.lastPrediction;
             double confidence = mlStats.lastConfidence;
             MarketRegimeClassifier.MarketRegime currentRegime = mlStats.currentRegime;
