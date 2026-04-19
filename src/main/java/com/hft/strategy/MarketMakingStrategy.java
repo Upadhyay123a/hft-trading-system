@@ -64,9 +64,18 @@ public class MarketMakingStrategy implements Strategy {
         lastQuoteTime = now;
         
         // Get current market state
-        long midPrice = orderBook != null ? orderBook.getMidPrice() : 0;
+        long midPrice = 0;
+        if (orderBook != null && orderBook.getMidPrice() > 0) {
+            // Use order book mid price if available
+            midPrice = orderBook.getMidPrice();
+        } else if (tick.price > 0) {
+            // Fall back to tick price if order book is empty
+            midPrice = tick.price;
+            logger.debug("Using tick price as mid price: {}", tick.price);
+        }
+        
         if (midPrice == 0) {
-            return orders; // No market yet
+            return orders; // No market data yet
         }
         
         // Calculate quote prices
