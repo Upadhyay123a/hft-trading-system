@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.ArrayDeque; // FIX 1: ArrayDeque instead of ArrayList for O(1) remove from front
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -20,18 +21,29 @@ public class MomentumStrategy implements Strategy {
     
     private final int symbolId;
     private final int lookbackPeriod;    // Number of ticks to look back
-    private final double threshold;      // Price change threshold to trigger
+    private final double threshold;      // Price change % threshold to trigger (e.g. 0.05 = 0.05%)
     private final int orderSize;
     private final long maxPosition;
     
     private final AtomicLong orderIdGenerator = new AtomicLong(1000);
-    private final List<Long> recentPrices = new ArrayList<>();
+
+    // FIX 1: ArrayDeque gives O(1) addLast / removeFirst vs ArrayList's O(n) remove(0)
+    private final ArrayDeque<Long> recentPrices = new ArrayDeque<>();
     
-    private long currentPosition = 0;
-    private double totalPnL = 0.0;
-    private long lastTradeTime = 0;
-    private final long minTimeBetweenTrades = 1_000_000_000; // 1 second
-    
+    // FIX 2: volatile so Disruptor handler thread and monitor thread both see latest values
+    private volatile long currentPosition = 0;
+    private volatile double totalPnL = 0.0;
+    private volatile long lastTradeTime = 0;
+
+    // FIX 3: added L suffix — without it the literal is an int (max ~2.1B fits, but
+    // explicit L makes intent clear and prevents future refactor bugs)
+    private final long minTimeBetweenTrades = 1_000_000_000L; // 1 second in nanoseconds
+
+    // FIX 4: track our own order IDs so onTrade() can correctly identify buyer/seller
+    // instead of the fragile magic-number heuristic (trade.buyOrderId >= 1000)
+    private final java.util.Set<Long> ourBuyOrderIds  = java.util.Collections.synchronizedSet(new java.util.HashSet<>());
+    private final java.util.Set<Long> ourSellOrderIds = java.util.Collections.synchronizedSet(new java.util.HashSet<>());
+
     public MomentumStrategy(int symbolId, int lookbackPeriod, double threshold, 
                            int orderSize, long maxPosition) {
         this.symbolId = symbolId;
@@ -56,10 +68,10 @@ public class MomentumStrategy implements Strategy {
             return orders;
         }
         
-        // Add price to history
-        recentPrices.add(tick.price);
+        // FIX 1: use ArrayDeque API — addLast / size / peekFirst / pollFirst
+        recentPrices.addLast(tick.price);
         if (recentPrices.size() > lookbackPeriod) {
-            recentPrices.remove(0);
+            recentPrices.pollFirst(); // O(1) instead of ArrayList.remove(0) which is O(n)
         }
         
         // Need enough data
@@ -68,8 +80,8 @@ public class MomentumStrategy implements Strategy {
         }
         
         // Calculate momentum
-        long oldPrice = recentPrices.get(0);
-        long newPrice = recentPrices.get(recentPrices.size() - 1);
+        long oldPrice = recentPrices.peekFirst();
+        long newPrice = recentPrices.peekLast();
         double priceChange = ((newPrice - oldPrice) / (double)oldPrice) * 100.0;
         
         // Rate limit trades
@@ -81,28 +93,32 @@ public class MomentumStrategy implements Strategy {
         // Generate signals
         if (priceChange > threshold && currentPosition < maxPosition) {
             // Bullish momentum - buy
+            long orderId = orderIdGenerator.getAndIncrement();
             Order buyOrder = new Order(
-                orderIdGenerator.getAndIncrement(),
+                orderId,
                 symbolId,
                 tick.price, // Market price
                 orderSize,
                 (byte)0, // Buy
                 (byte)1  // Market order
             );
+            ourBuyOrderIds.add(orderId); // FIX 4: track as our buy order
             orders.add(buyOrder);
             lastTradeTime = now;
             logger.debug("BUY signal: momentum={}%", priceChange);
         } 
         else if (priceChange < -threshold && currentPosition > -maxPosition) {
             // Bearish momentum - sell
+            long orderId = orderIdGenerator.getAndIncrement();
             Order sellOrder = new Order(
-                orderIdGenerator.getAndIncrement(),
+                orderId,
                 symbolId,
                 tick.price,
                 orderSize,
                 (byte)1, // Sell
                 (byte)1  // Market order
             );
+            ourSellOrderIds.add(orderId); // FIX 4: track as our sell order
             orders.add(sellOrder);
             lastTradeTime = now;
             logger.debug("SELL signal: momentum={}%", priceChange);
@@ -113,16 +129,20 @@ public class MomentumStrategy implements Strategy {
     
     @Override
     public void onTrade(Trade trade) {
-        // Update position based on which side we were on
-        boolean wasBuyer = trade.buyOrderId >= 1000; // Our orders start at 1000
-        
+        // FIX 4: use tracked order ID sets instead of fragile magic-number heuristic
+        // Old code: boolean wasBuyer = trade.buyOrderId >= 1000; // breaks if IDs reset
+        boolean wasBuyer = ourBuyOrderIds.contains(trade.buyOrderId);
+
         if (wasBuyer) {
             currentPosition += trade.quantity;
-            totalPnL -= trade.getPriceAsDouble() * trade.quantity;
-        } else {
+            totalPnL -= trade.getPriceAsDouble() * trade.quantity; // cost of buy
+            ourBuyOrderIds.remove(trade.buyOrderId); // clean up to avoid memory leak
+        } else if (ourSellOrderIds.contains(trade.sellOrderId)) {
             currentPosition -= trade.quantity;
-            totalPnL += trade.getPriceAsDouble() * trade.quantity;
+            totalPnL += trade.getPriceAsDouble() * trade.quantity; // revenue from sell
+            ourSellOrderIds.remove(trade.sellOrderId); // clean up
         }
+        // If trade belongs to someone else, ignore it
         
         logger.debug("Trade executed: price={}, qty={}, pos={}, pnl={}",
             trade.getPriceAsDouble(), trade.quantity, currentPosition, totalPnL);
@@ -143,6 +163,8 @@ public class MomentumStrategy implements Strategy {
         recentPrices.clear();
         currentPosition = 0;
         totalPnL = 0.0;
+        ourBuyOrderIds.clear();
+        ourSellOrderIds.clear();
     }
     
     public long getCurrentPosition() {
