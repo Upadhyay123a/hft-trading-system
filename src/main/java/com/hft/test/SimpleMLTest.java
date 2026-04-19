@@ -94,8 +94,8 @@ public class SimpleMLTest {
         logger.info("   - Features: {}", features.size());
         logger.info("   - Labels: {}", labels.size());
         logger.info("   - Classifier trained: {}", classifier.isTrained());
-        logger.info("   - Accuracy: {:.1f}%", accuracy);
-        logger.info("   - Avg prediction time: {:.3f} microseconds", avgTime);
+        logger.info("   - Accuracy: {}%", String.format("%.1f", accuracy));
+        logger.info("   - Avg prediction time: {} microseconds", String.format("%.3f", avgTime));
     }
     
     private static void testPhase2() {
@@ -147,11 +147,11 @@ public class SimpleMLTest {
         double avgPredictionTime = predictionTime / 1000.0 / 50;
         
         logger.info("✅ Phase 2 LSTM Results:");
-        logger.info("   - Training time: {:.2f} ms", lstmTime / 1000000.0);
+        logger.info("   - Training time: {} ms", String.format("%.2f", lstmTime / 1000000.0));
         logger.info("   - Training samples: {}", priceData.size());
         lstm.getStats();
-        logger.info("   - Average error: {:.6f}%", avgError * 100);
-        logger.info("   - Avg prediction time: {:.3f} microseconds", avgPredictionTime);
+        logger.info("   - Average error: {}%", String.format("%.6f", avgError * 100));
+        logger.info("   - Avg prediction time: {} microseconds", String.format("%.3f", avgPredictionTime));
         
         // Test Reinforcement Learning
         ReinforcementLearningAgent rlAgent = new ReinforcementLearningAgent(10, 6);
@@ -175,7 +175,7 @@ public class SimpleMLTest {
         long rlTime = System.nanoTime() - startTime;
         
         logger.info("✅ Phase 2 RL Results:");
-        logger.info("   - Training time: {:.2f} ms", rlTime / 1000000.0);
+        logger.info("   - Training time: {} ms", String.format("%.2f", rlTime / 1000000.0));
         rlAgent.getStats();
         
         // Combined performance test
@@ -210,8 +210,8 @@ public class SimpleMLTest {
         double avgCombinedTime = combinedTime / 1000.0 / 1000;
         
         logger.info("✅ Combined Performance:");
-        logger.info("   - 1000 combined operations in {:.2f} ms", combinedTime / 1000000.0);
-        logger.info("   - Average time per operation: {:.3f} microseconds", avgCombinedTime);
+        logger.info("   - 1000 combined operations in {} ms", String.format("%.2f", combinedTime / 1000000.0));
+        logger.info("   - Average time per operation: {} microseconds", String.format("%.3f", avgCombinedTime));
         
         // Performance summary
         logger.info("\n=== Performance Summary ===");
