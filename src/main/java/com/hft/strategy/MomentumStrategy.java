@@ -82,6 +82,12 @@ public class MomentumStrategy implements Strategy {
         // Calculate momentum
         long oldPrice = recentPrices.peekFirst();
         long newPrice = recentPrices.peekLast();
+        
+        // Add null safety for price calculation
+        if (oldPrice <= 0 || newPrice <= 0) {
+            return orders; // Skip invalid prices
+        }
+        
         double priceChange = ((newPrice - oldPrice) / (double)oldPrice) * 100.0;
         
         // Rate limit trades
@@ -105,7 +111,7 @@ public class MomentumStrategy implements Strategy {
             ourBuyOrderIds.add(orderId); // FIX 4: track as our buy order
             orders.add(buyOrder);
             lastTradeTime = now;
-            logger.debug("BUY signal: momentum={}%", priceChange);
+            logger.info("BUY signal: momentum={:.4f}%", priceChange);
         } 
         else if (priceChange < -threshold && currentPosition > -maxPosition) {
             // Bearish momentum - sell
@@ -121,7 +127,7 @@ public class MomentumStrategy implements Strategy {
             ourSellOrderIds.add(orderId); // FIX 4: track as our sell order
             orders.add(sellOrder);
             lastTradeTime = now;
-            logger.debug("SELL signal: momentum={}%", priceChange);
+            logger.info("SELL signal: momentum={:.4f}%", priceChange);
         }
         
         return orders;

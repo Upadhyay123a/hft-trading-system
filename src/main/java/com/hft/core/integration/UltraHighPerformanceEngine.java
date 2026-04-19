@@ -156,6 +156,12 @@ public class UltraHighPerformanceEngine {
      * Process incoming tick data
      */
     public void processTick(long timestamp, int symbolId, long price, long volume, byte side) {
+        // Add null checks for safety
+        if (disruptorEngine == null || aeronFeed == null) {
+            logger.warn("Engine components not initialized, skipping tick");
+            return;
+        }
+        
         // Publish to Disruptor for ultra-low latency processing
         disruptorEngine.publishTick(timestamp, symbolId, price, volume, side);
         

@@ -46,10 +46,10 @@ public class MLEnhancedMarketMakingStrategy implements Strategy {
     private final double[] regimeMaxPositions; // Max positions by regime
     
     // Current state
-    private int currentPosition;
+    private volatile int currentPosition;
     private long lastQuoteTime;
     private boolean isTrained;
-    private MarketRegimeClassifier.MarketRegime lastRegime = MarketRegimeClassifier.MarketRegime.RANGING;
+    private volatile MarketRegimeClassifier.MarketRegime lastRegime = MarketRegimeClassifier.MarketRegime.RANGING;
     
     // Performance tracking
     private final AtomicLong quotesGenerated;
