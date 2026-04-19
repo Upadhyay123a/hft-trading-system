@@ -56,8 +56,8 @@ public class MomentumStrategy implements Strategy {
     @Override
     public void initialize() {
         logger.info("Initialized Momentum Strategy for symbol {}", symbolId);
-        logger.info("Lookback: {}, Threshold: {}%, Size: {}, Max Pos: {}",
-            lookbackPeriod, threshold, orderSize, maxPosition);
+        logger.info("Lookback: {}, Threshold: {}%, Size: {}, Max Pos: {}", 
+            lookbackPeriod, String.format("%.1f", threshold), orderSize, maxPosition);
     }
     
     @Override
