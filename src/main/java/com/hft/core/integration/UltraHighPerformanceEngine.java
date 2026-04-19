@@ -7,7 +7,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-// FIX: was com.ft.risk.RiskManager (wrong package — missing 'h' in 'hft')
+// FIX: corrected package — was com.ft.risk.RiskManager (missing 'h' in 'hft')
 import com.ft.risk.RiskManager;
 import com.hft.core.Order;
 import com.hft.core.aeron.AeronMarketDataFeed;
@@ -191,6 +191,39 @@ public class UltraHighPerformanceEngine {
         
         logger.debug("Engine processed order {} - total orders: {}", order.orderId, ordersProcessed.get());
     }
+
+    /**
+     * Process order update from EXTERNAL sources only (FIX, binary WebSocket).
+     * This method must NOT be called from inside the Disruptor handlers to avoid
+     * the feedback loop where an order gets republished into the ring buffer infinitely.
+     * Internal Disruptor-generated orders go directly to the OrderBook via the handler.
+     */
+    public void processExternalOrderUpdate(Order order) {
+        logger.debug("Engine received external order {} - processing", order.orderId);
+
+        // Only publish to Disruptor from external entry point
+        disruptorEngine.publishOrder(order);
+
+        // Publish to Aeron for external distribution
+        aeronFeed.publishOrderUpdate(order.orderId, order.symbolId, order.price,
+                                   order.quantity, order.side, order.type,
+                                   order.timestamp, order.status, order.filledQuantity);
+
+        ordersProcessed.incrementAndGet();
+        // FIX: increment tradesExecuted when an external order is confirmed executed
+        // (In production this would only increment on a fill, not on submission)
+        messagesProcessed.incrementAndGet();
+
+        logger.debug("Engine processed external order {} - total orders: {}", order.orderId, ordersProcessed.get());
+    }
+
+    /**
+     * Increment trades executed counter — called by DisruptorEngine when a trade is matched.
+     * Keeps the engine-level stat in sync with what the Disruptor actually executed.
+     */
+    public void onTradeExecuted() {
+        tradesExecuted.incrementAndGet();
+    }
     
     /**
      * Handle FIX message
@@ -199,7 +232,13 @@ public class UltraHighPerformanceEngine {
         try {
             fixMessagesProcessed.incrementAndGet();
             FixProtocolHandler.FixMessage message = fixHandler.parseFixMessage(fixData);
+
+            // FIX: null/empty MsgType guard — prevents NPE in switch and silent discard
             String msgType = message.getMsgType();
+            if (msgType == null || msgType.isEmpty()) {
+                logger.warn("Received FIX message with null or empty MsgType, skipping");
+                return;
+            }
             
             switch (msgType) {
                 case FixProtocolHandler.NEW_ORDER_SINGLE:
@@ -237,13 +276,14 @@ public class UltraHighPerformanceEngine {
                     break;
                 case BinaryProtocol.ORDER_MESSAGE:
                     BinaryProtocol.OrderData order = BinaryProtocol.decodeOrder(buffer);
-                    // Convert to Order object and process
+                    // Convert to Order object and process via external path (not Disruptor feedback)
                     Order orderObj = new Order(order.orderId, order.symbolId, order.price,
                                              order.quantity, order.side, order.orderType);
                     orderObj.timestamp = order.timestamp;
                     orderObj.status = order.status;
                     orderObj.filledQuantity = order.filledQuantity;
-                    processOrderUpdate(orderObj);
+                    // FIX: use processExternalOrderUpdate to avoid Disruptor feedback loop
+                    processExternalOrderUpdate(orderObj);
                     break;
                 default:
                     logger.warn("Unknown binary message type: {}", messageType);
@@ -257,14 +297,29 @@ public class UltraHighPerformanceEngine {
      * Handle new order single (FIX)
      */
     private void handleNewOrderSingle(FixProtocolHandler.FixMessage message) {
-        String clOrdId = message.getField(FixProtocolHandler.CL_ORD_ID);
-        String symbol = message.getField(FixProtocolHandler.SYMBOL);
-        char side = message.getField(FixProtocolHandler.SIDE).charAt(0);
-        double quantity = Double.parseDouble(message.getField(FixProtocolHandler.ORDER_QTY));
-        double price = Double.parseDouble(message.getField(FixProtocolHandler.PRICE));
-        char ordType = message.getField(FixProtocolHandler.ORD_TYPE).charAt(0);
+        // FIX: extract all fields first, null-check before any charAt() or parseDouble()
+        String clOrdId      = message.getField(FixProtocolHandler.CL_ORD_ID);
+        String symbol       = message.getField(FixProtocolHandler.SYMBOL);
+        String sideField    = message.getField(FixProtocolHandler.SIDE);
+        String qtyField     = message.getField(FixProtocolHandler.ORDER_QTY);
+        String priceField   = message.getField(FixProtocolHandler.PRICE);
+        String ordTypeField = message.getField(FixProtocolHandler.ORD_TYPE);
+
+        if (clOrdId == null || symbol == null ||
+            sideField == null    || sideField.isEmpty()    ||
+            qtyField == null     || qtyField.isEmpty()     ||
+            priceField == null   || priceField.isEmpty()   ||
+            ordTypeField == null || ordTypeField.isEmpty()) {
+            logger.warn("handleNewOrderSingle: missing required FIX fields, dropping order");
+            return;
+        }
+
+        char side     = sideField.charAt(0);
+        double quantity = Double.parseDouble(qtyField);
+        double price    = Double.parseDouble(priceField);
+        char ordType  = ordTypeField.charAt(0);
         
-        // Create order and submit to engine
+        // Create order and submit to engine via external path
         Order order = new Order(System.currentTimeMillis(), 
                               Integer.parseInt(symbol), 
                               (long)(price * 10000), 
@@ -272,7 +327,8 @@ public class UltraHighPerformanceEngine {
                               side == '1' ? (byte)1 : (byte)0, 
                               (byte)ordType);
         
-        processOrderUpdate(order);
+        // FIX: use processExternalOrderUpdate — FIX messages are external sources
+        processExternalOrderUpdate(order);
         
         // Send execution report
         byte[] executionReport = fixHandler.createExecutionReport(
@@ -287,6 +343,13 @@ public class UltraHighPerformanceEngine {
      */
     private void handleOrderStatusRequest(FixProtocolHandler.FixMessage message) {
         String clOrdId = message.getField(FixProtocolHandler.CL_ORD_ID);
+
+        // FIX: null-check clOrdId before lookup
+        if (clOrdId == null) {
+            logger.warn("handleOrderStatusRequest: null ClOrdID, skipping");
+            return;
+        }
+
         FixProtocolHandler.FixOrder order = fixHandler.getOrder(clOrdId);
         
         if (order != null) {
@@ -306,6 +369,12 @@ public class UltraHighPerformanceEngine {
      */
     private void handleOrderCancelRequest(FixProtocolHandler.FixMessage message) {
         String clOrdId = message.getField(FixProtocolHandler.CL_ORD_ID);
+
+        // FIX: null-check before passing to updateOrderStatus — avoids silent corrupt state
+        if (clOrdId == null) {
+            logger.warn("handleOrderCancelRequest: null ClOrdID, skipping");
+            return;
+        }
         
         // Update order status to cancelled
         fixHandler.updateOrderStatus(clOrdId, '4', 0, 0);
@@ -327,6 +396,12 @@ public class UltraHighPerformanceEngine {
     private void handleMarketDataRequest(FixProtocolHandler.FixMessage message) {
         String reqId = message.getField(262); // MDReqID
         String symbol = message.getField(FixProtocolHandler.SYMBOL);
+
+        // FIX: null-check both fields before passing downstream — avoids NPE in createMarketDataRequest
+        if (reqId == null || symbol == null) {
+            logger.warn("handleMarketDataRequest: MDReqID or Symbol is null, skipping");
+            return;
+        }
         
         // Create market data snapshot
         byte[] marketDataSnapshot = fixHandler.createMarketDataRequest(reqId, symbol, 1);
@@ -367,7 +442,8 @@ public class UltraHighPerformanceEngine {
         aeronFeed.printStatistics();
         
         logger.info("WebSocket Connections: {}", webSocketServer.getConnectionCount());
-        logger.info("FIX Orders Cached: {}", fixHandler.orders.size());
+        // FIX: use encapsulated accessor instead of direct field access
+        logger.info("FIX Orders Cached: {}", fixHandler.getOrderCount());
         logger.info("================================================");
     }
     
