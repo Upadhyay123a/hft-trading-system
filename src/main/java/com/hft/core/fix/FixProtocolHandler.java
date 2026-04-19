@@ -6,6 +6,9 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -17,6 +20,10 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class FixProtocolHandler {
     private static final Logger logger = LoggerFactory.getLogger(FixProtocolHandler.class);
+
+    // FIX: FIX timestamp format — tag 52 SendingTime uses UTCTimestamp
+    private static final DateTimeFormatter FIX_TIMESTAMP_FMT =
+        DateTimeFormatter.ofPattern("yyyyMMdd-HH:mm:ss.SSS").withZone(ZoneOffset.UTC);
     
     // FIX message types
     public static final String NEW_ORDER_SINGLE = "D";
@@ -46,11 +53,20 @@ public class FixProtocolHandler {
     private final String senderCompId;
     private final String targetCompId;
     private final AtomicLong sequenceNumber = new AtomicLong(1);
-    public final Map<String, FixOrder> orders = new ConcurrentHashMap<>();
+
+    // FIX: orders is now private — access via getOrder(), getOrderCount(), searchOrders()
+    // Previously was public which broke encapsulation and allowed external mutation
+    private final Map<String, FixOrder> orders = new ConcurrentHashMap<>();
     
     // Performance optimization
-    private final ByteBuffer fixBuffer = ByteBuffer.allocate(1024);
+    // FIX: tagCache is kept but wired into serializeFixMessage for actual use
     private final Map<Integer, String> tagCache = new HashMap<>();
+
+    // FIX: removed shared fixBuffer field — it was not thread-safe.
+    // serializeFixMessage() now allocates a fresh ByteBuffer per call.
+    // ByteBuffer allocation is negligible cost compared to network I/O and
+    // eliminates the race condition when multiple threads call createExecutionReport()
+    // or createNewOrderSingle() concurrently.
     
     public FixProtocolHandler(String senderCompId, String targetCompId) {
         this.senderCompId = senderCompId;
@@ -210,6 +226,13 @@ public class FixProtocolHandler {
     public FixOrder getOrder(String clOrdId) {
         return orders.get(clOrdId);
     }
+
+    /**
+     * FIX: encapsulated order count — replaces direct field access fixHandler.orders.size()
+     */
+    public int getOrderCount() {
+        return orders.size();
+    }
     
     /**
      * Update order status
@@ -224,24 +247,53 @@ public class FixProtocolHandler {
     }
     
     /**
-     * Serialize FIX message to binary
+     * Serialize FIX message to binary.
+     *
+     * FIX (thread-safety): allocates a fresh ByteBuffer per call instead of reusing
+     * the old shared fixBuffer field. This eliminates the race condition where
+     * multiple threads calling createExecutionReport() or createNewOrderSingle()
+     * concurrently would corrupt each other's output via the shared buffer.
+     *
+     * FIX (protocol correctness): tag 9 is BodyLength (integer byte count of the
+     * body fields), NOT SendingTime. SendingTime is tag 52 (UTCTimestamp).
+     * Previously tag 9 was incorrectly written as System.currentTimeMillis(),
+     * which would cause counterparties to reject every outbound message.
      */
     private byte[] serializeFixMessage(FixMessage message) {
-        fixBuffer.clear();
-        
-        // Add header fields
-        addToBuffer(fixBuffer, 8, "FIX.4.4"); // BeginString
-        addToBuffer(fixBuffer, 9, String.valueOf(System.currentTimeMillis())); // SendingTime
-        addToBuffer(fixBuffer, 49, senderCompId);
-        addToBuffer(fixBuffer, 56, targetCompId);
-        addToBuffer(fixBuffer, 34, String.valueOf(sequenceNumber.getAndIncrement()));
-        
-        // Add body fields
+        // FIX: fresh buffer per call — thread-safe, no shared mutable state
+        ByteBuffer fixBuffer = ByteBuffer.allocate(1024);
+
+        // Build body fields first so we can compute BodyLength (tag 9)
+        ByteBuffer bodyBuffer = ByteBuffer.allocate(896);
+        bodyBuffer.clear();
+
+        // Sequence number and SendingTime go in the body per FIX standard
+        addToBuffer(bodyBuffer, 34, String.valueOf(sequenceNumber.getAndIncrement())); // MsgSeqNum
+        // FIX: tag 52 = SendingTime (UTCTimestamp), was incorrectly using tag 9 before
+        addToBuffer(bodyBuffer, 52, FIX_TIMESTAMP_FMT.format(Instant.now()));         // SendingTime
+        addToBuffer(bodyBuffer, 49, senderCompId);                                     // SenderCompID
+        addToBuffer(bodyBuffer, 56, targetCompId);                                     // TargetCompID
+
+        // Add body fields from message — use tagCache for tag-to-string lookup if available
         for (Map.Entry<Integer, String> entry : message.fields.entrySet()) {
-            addToBuffer(fixBuffer, entry.getKey(), entry.getValue());
+            String tagStr = tagCache.getOrDefault(entry.getKey(), String.valueOf(entry.getKey()));
+            String fieldStr = tagStr + "=" + entry.getValue() + "|";
+            byte[] fieldBytes = fieldStr.getBytes(StandardCharsets.US_ASCII);
+            bodyBuffer.put(fieldBytes);
         }
+
+        int bodyLength = bodyBuffer.position();
+
+        // Now write the full message: BeginString, BodyLength, then body
+        fixBuffer.clear();
+        addToBuffer(fixBuffer, 8, "FIX.4.4");                     // BeginString
+        // FIX: tag 9 = BodyLength (integer), not SendingTime
+        addToBuffer(fixBuffer, 9, String.valueOf(bodyLength));     // BodyLength
+
+        // Copy body into main buffer
+        fixBuffer.put(bodyBuffer.array(), 0, bodyLength);
         
-        // Calculate and add checksum
+        // Calculate and add checksum (tag 10)
         String checksum = calculateChecksum(fixBuffer.array(), fixBuffer.position());
         addToBuffer(fixBuffer, 10, checksum);
         
