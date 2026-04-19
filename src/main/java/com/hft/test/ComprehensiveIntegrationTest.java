@@ -839,7 +839,7 @@ public class ComprehensiveIntegrationTest {
             logger.info("   Testing Disruptor engine...");
             long startTime = System.nanoTime();
             
-            DisruptorEngine disruptor = new DisruptorEngine(strategies.get(0), riskManager);
+            DisruptorEngine disruptor = new DisruptorEngine(strategies.get(0), riskManager, null);
             
             // Test message throughput
             AtomicInteger messageCount = new AtomicInteger(0);

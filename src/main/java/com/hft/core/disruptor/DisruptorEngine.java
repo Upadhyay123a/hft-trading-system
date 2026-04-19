@@ -8,6 +8,7 @@ import com.hft.orderbook.OrderBook;
 import com.ft.risk.RiskManager;
 import com.hft.strategy.Strategy;
 import com.hft.monitoring.PerformanceMonitor;
+import com.hft.core.integration.UltraHighPerformanceEngine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,9 +41,6 @@ public class DisruptorEngine {
     private static final byte MSG_TYPE_ORDER = BinaryProtocol.ORDER_MESSAGE;
     
     // Core components
-    private final Strategy strategy;
-    private final RiskManager riskManager;
-    private final PerformanceMonitor performanceMonitor;
     
     // Disruptor infrastructure
     private final Disruptor<byte[]> disruptor;
@@ -54,18 +52,27 @@ public class DisruptorEngine {
     
     // Performance tracking
     private final AtomicLong ticksProcessed = new AtomicLong(0);
-    private final AtomicLong tradesExecuted = new AtomicLong(0);
     private final AtomicLong ordersProcessed = new AtomicLong(0);
+    private final AtomicLong tradesExecuted = new AtomicLong(0);
+    private final AtomicLong messagesProcessed = new AtomicLong(0);
+    
+    // Strategy and risk management
+    private final Strategy strategy;
+    private final RiskManager riskManager;
+    private final PerformanceMonitor performanceMonitor;
+    private final UltraHighPerformanceEngine engine;
     private final AtomicBoolean running = new AtomicBoolean(false);
     
     // Event handlers
     private final TickEventHandler[] tickHandlers;
     private final OrderEventHandler[] orderHandlers;
     
-    public DisruptorEngine(Strategy strategy, RiskManager riskManager) {
+    public DisruptorEngine(Strategy strategy, RiskManager riskManager, UltraHighPerformanceEngine engine) {
         this.strategy = strategy;
         this.riskManager = riskManager;
         this.performanceMonitor = PerformanceMonitor.getInstance();
+        this.engine = engine;
+        this.running.set(true);
         
         // Initialize thread factory
         ThreadFactory threadFactory = new ThreadFactory() {
@@ -258,6 +265,11 @@ public class DisruptorEngine {
                 if (!riskResult.approved) {
                     performanceMonitor.incrementCounter("orders_rejected_risk_disruptor");
                     return;
+                }
+                
+                // Send order to engine for counting and external processing
+                if (engine != null) {
+                    engine.processOrderUpdate(order);
                 }
                 
                 // Execute order

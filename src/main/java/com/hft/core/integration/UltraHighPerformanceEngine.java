@@ -52,7 +52,7 @@ public class UltraHighPerformanceEngine {
         this.performanceMonitor = PerformanceMonitor.getInstance();
         
         // Initialize core components
-        this.disruptorEngine = new DisruptorEngine(strategy, riskManager);
+        this.disruptorEngine = new DisruptorEngine(strategy, riskManager, this);
         this.aeronFeed = new AeronMarketDataFeed();
         this.fixHandler = new FixProtocolHandler("HFT_ENGINE", "EXTERNAL_CLIENT");
         this.webSocketServer = new WebSocketApiServer();

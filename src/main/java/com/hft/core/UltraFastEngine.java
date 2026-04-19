@@ -41,7 +41,7 @@ public class UltraFastEngine {
     public UltraFastEngine(Strategy strategy, RiskManager riskManager) {
         this.strategy = strategy;
         this.riskManager = riskManager;
-        this.disruptorEngine = new DisruptorEngine(strategy, riskManager);
+        this.disruptorEngine = new DisruptorEngine(strategy, riskManager, null);
         
         logger.info("Ultra-Fast Engine initialized - Target: < 1 microsecond latency");
     }
