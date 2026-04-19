@@ -41,7 +41,10 @@ public class RiskManager {
     private volatile double volatility = 0.0;
     private volatile double sharpeRatio = 0.0;
     private volatile double maxDrawdown = 0.0;
-    private volatile long currentPeakEquity = 0;
+
+    // FIX: removed duplicate volatile long currentPeakEquity — it shadowed peakEquity
+    // (AtomicLong) and could diverge under concurrent access since it was non-atomic.
+    // All peak equity tracking now goes through peakEquity (AtomicLong) exclusively.
     
     // Risk breach flags
     private volatile boolean emergencyStop = false;
@@ -90,15 +93,19 @@ public class RiskManager {
             activateEmergencyStop("Daily loss limit exceeded: $" + String.format("%.2f", currentDailyLoss));
             return RiskCheckResult.rejected("Daily loss limit exceeded");
         }
-        
-        // Check drawdown limit
+
+        // FIX: guard against division by zero when peakEquity is 0 (startup state).
+        // Previously: peakEq = 0 → drawdown = 0/0 = NaN → NaN > maxDrawdownPercent
+        // is always false in Java, so the check silently passed even at startup.
+        // Now: skip the drawdown check entirely until we have a meaningful peak.
         double currentEquity = totalPnL.get() / 10000.0;
         double peakEq = peakEquity.get() / 10000.0;
-        double drawdown = (peakEq - currentEquity) / peakEq * 100;
-        
-        if (drawdown > maxDrawdownPercent) {
-            activateEmergencyStop("Max drawdown exceeded: " + String.format("%.2f", drawdown) + "%");
-            return RiskCheckResult.rejected("Maximum drawdown exceeded");
+        if (peakEq > 0) {
+            double drawdown = (peakEq - currentEquity) / peakEq * 100;
+            if (drawdown > maxDrawdownPercent) {
+                activateEmergencyStop("Max drawdown exceeded: " + String.format("%.2f", drawdown) + "%");
+                return RiskCheckResult.rejected("Maximum drawdown exceeded");
+            }
         }
         
         // Value at Risk (VaR) check
@@ -113,20 +120,30 @@ public class RiskManager {
     }
     
     /**
-     * Check concentration risk - prevents overexposure to single symbol
+     * Check concentration risk - prevents overexposure to single symbol.
+     *
+     * FIX: previously the current symbol's OLD position was included in totalExposure
+     * (from iterating positions.values()) AND then symbolExposure was added again,
+     * double-counting it and making concentration look smaller than it was.
+     * Now we sum all OTHER symbols first, then add only the new proposed position
+     * for the target symbol — no double-counting.
      */
     private boolean checkConcentrationRisk(int symbolId, long newPosition) {
         double totalExposure = 0.0;
         double symbolExposure = Math.abs(newPosition);
-        
-        for (Long pos : positions.values()) {
-            totalExposure += Math.abs(pos);
+
+        // FIX: sum exposure of ALL OTHER symbols (exclude the target symbol's old position)
+        for (Map.Entry<Integer, Long> entry : positions.entrySet()) {
+            if (!entry.getKey().equals(symbolId)) {
+                totalExposure += Math.abs(entry.getValue());
+            }
         }
-        
-        // Add new position to total
+
+        // Now add the proposed new position for target symbol
         totalExposure += symbolExposure;
         
         // Check if single symbol exceeds 30% of total exposure
+        if (totalExposure == 0) return true; // no exposure yet — safe
         double concentrationRatio = symbolExposure / totalExposure;
         return concentrationRatio <= 0.30; // Max 30% concentration
     }
@@ -219,15 +236,16 @@ public class RiskManager {
         // Update returns history for VaR
         updateReturnsHistory(tradePnL);
         
-        // Update peak equity and drawdown
+        // FIX: update peak equity using only the AtomicLong peakEquity.
+        // The old duplicate volatile currentPeakEquity has been removed — it was
+        // non-atomic and could diverge from peakEquity under concurrent onTrade() calls.
         long currentEquity = totalPnL.get();
         peakEquity.updateAndGet(peak -> Math.max(peak, currentEquity));
-        
-        if (currentEquity > currentPeakEquity) {
-            currentPeakEquity = currentEquity;
-        }
-        
-        double currentDrawdown = (double)(currentPeakEquity - currentEquity) / currentPeakEquity * 100;
+
+        // Drawdown snapshot against the single authoritative peak
+        long peakEq = peakEquity.get();
+        double currentDrawdown = peakEq == 0 ? 0.0
+            : (double)(peakEq - currentEquity) / peakEq * 100;
         maxDrawdown = Math.max(maxDrawdown, currentDrawdown);
         
         // Update risk metrics
@@ -263,13 +281,20 @@ public class RiskManager {
     }
     
     /**
-     * Update returns history for VaR calculation
+     * Update returns history for VaR calculation.
+     *
+     * FIX: previously used pre-increment: recentReturns[returnIndex = (returnIndex+1) % N]
+     * This meant index 0 was initialised to Java's default 0.0 and NEVER overwritten,
+     * permanently skewing the VaR calculation with a stale zero after a full rotation.
+     * Fix: write first at the current index, then advance.
      */
     private void updateReturnsHistory(double tradePnL) {
         double portfolioValue = Math.abs(totalPnL.get() / 10000.0);
         if (portfolioValue > 0) {
             double returnRate = tradePnL / portfolioValue;
-            recentReturns[returnIndex = (returnIndex + 1) % recentReturns.length] = returnRate;
+            // FIX: write at current index first, then advance (was pre-incrementing before)
+            recentReturns[returnIndex] = returnRate;
+            returnIndex = (returnIndex + 1) % recentReturns.length;
         }
     }
     
@@ -300,15 +325,25 @@ public class RiskManager {
     }
     
     /**
-     * Check order rate limit
+     * Check order rate limit.
+     *
+     * FIX: previously used two separate atomic operations — orderCount.set(0) then
+     * orderCount.get() < maxOrdersPerSecond — with no lock between them. Under high
+     * throughput, N threads could all see the reset condition simultaneously, all set
+     * to 0, and all pass the limit, allowing an N× burst through in one millisecond.
+     *
+     * Fix: synchronize the entire method so the reset+check is atomic. This is on
+     * the pre-trade path so it must be fast, but it's called at most maxOrdersPerSecond
+     * times per second, making lock contention negligible compared to risk computation.
      */
-    private boolean checkOrderRateLimit() {
+    private synchronized boolean checkOrderRateLimit() {
         long now = System.currentTimeMillis();
         long timeWindow = 1000; // 1 second
         
-        // Reset counter every second
+        // Reset counter every second — synchronized so only one thread resets at a time
         if (now - lastOrderTime > timeWindow) {
             orderCount.set(0);
+            lastOrderTime = now;
             return true;
         }
         
@@ -441,6 +476,7 @@ public class RiskManager {
     public double calculateDrawdown() {
         long currentEquity = totalPnL.get();
         long peakEq = peakEquity.get();
+        // FIX: guard against division by zero on startup (same fix as validateOrder)
         return peakEq == 0 ? 0.0 : (double)(peakEq - currentEquity) / peakEq * 100;
     }
     
