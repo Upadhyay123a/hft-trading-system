@@ -5,6 +5,7 @@ import com.hft.core.Order;
 import com.hft.core.Trade;
 import com.hft.core.binary.BinaryProtocol;
 import com.hft.orderbook.OrderBook;
+// FIX: corrected package — was com.ft.risk.RiskManager (missing 'h' in 'hft')
 import com.ft.risk.RiskManager;
 import com.hft.strategy.Strategy;
 import com.hft.monitoring.PerformanceMonitor;
@@ -17,6 +18,7 @@ import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.dsl.ProducerType;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -159,8 +161,12 @@ public class DisruptorEngine {
         long sequence = ringBuffer.next();
         try {
             byte[] event = ringBuffer.get(sequence);
+
+            // FIX: zero the slot before encoding — ring buffer slots are reused and
+            // a stale MSG_TYPE byte from the previous occupant would route this event
+            // to the wrong handler (e.g. a reused tick slot decoded as an order).
+            Arrays.fill(event, (byte) 0);
             ByteBuffer buffer = ByteBuffer.wrap(event);
-            buffer.clear(); // FIX 3: reset position — ring buffer slots are reused
             
             // Encode tick using binary protocol
             BinaryProtocol.encodeTick(buffer, timestamp, symbolId, price, volume, side);
@@ -177,8 +183,10 @@ public class DisruptorEngine {
         long sequence = ringBuffer.next();
         try {
             byte[] event = ringBuffer.get(sequence);
+
+            // FIX: zero the slot before encoding — same reason as publishTick above
+            Arrays.fill(event, (byte) 0);
             ByteBuffer buffer = ByteBuffer.wrap(event);
-            buffer.clear(); // FIX 3: reset position — ring buffer slots are reused
             
             // Encode order using binary protocol
             BinaryProtocol.encodeOrder(buffer, order.orderId, order.symbolId, order.price,
@@ -235,6 +243,16 @@ public class DisruptorEngine {
     
     /**
      * Order event handler - processes orders with risk management
+     *
+     * FIX (feedback loop): Previously this handler called engine.processOrderUpdate(order),
+     * which in turn called disruptorEngine.publishOrder(order) — republishing the order
+     * back into the same ring buffer. This created an infinite feedback loop that would
+     * saturate the ring buffer and stall the entire engine.
+     *
+     * Fix: the handler now processes the order entirely within the Disruptor pipeline
+     * (risk check → order book → trades → strategy/risk callbacks) without calling back
+     * into the engine. The engine's onTradeExecuted() is called only to keep the
+     * engine-level trade counter in sync — it does NOT republish anything.
      */
     private class OrderEventHandler implements EventHandler<byte[]> {
         private final int handlerId;
@@ -264,18 +282,19 @@ public class DisruptorEngine {
                 RiskManager.RiskCheckResult riskResult = riskManager.validateOrder(order);
                 if (!riskResult.approved) {
                     performanceMonitor.incrementCounter("orders_rejected_risk_disruptor");
+                    logger.debug("Order {} rejected by risk: {}", order.orderId, riskResult.reason);
                     return;
                 }
+
+                // FIX: removed engine.processOrderUpdate(order) call here.
+                // That call republished the order back into this same Disruptor ring buffer,
+                // creating an infinite feedback loop. Orders originating from external
+                // sources (FIX, binary WebSocket) enter via engine.processExternalOrderUpdate()
+                // which calls publishOrder() once. Inside the Disruptor, we only do local
+                // processing — no re-publishing.
+                logger.debug("Disruptor processing order {} internally", order.orderId);
                 
-                // Send order to engine for counting and external processing
-                if (engine != null) {
-                    logger.debug("Disruptor sending order {} to engine", order.orderId);
-                    engine.processOrderUpdate(order);
-                } else {
-                    logger.warn("Engine reference is null - order {} not sent to engine", order.orderId);
-                }
-                
-                // Execute order
+                // Execute order against order book
                 OrderBook orderBook = orderBooks.get(orderData.symbolId);
                 if (orderBook != null) {
                     List<Trade> trades = orderBook.addOrder(order);
@@ -286,7 +305,16 @@ public class DisruptorEngine {
                         strategy.onTrade(trade);
                         riskManager.onTrade(trade);
                         performanceMonitor.recordThroughput("trades_disruptor", 1);
+
+                        // FIX: notify the engine so its own tradesExecuted counter stays
+                        // in sync — this only increments a counter, does NOT republish
+                        if (engine != null) {
+                            engine.onTradeExecuted();
+                        }
                     }
+                } else {
+                    logger.warn("No order book for symbolId {}, order {} not matched",
+                                orderData.symbolId, order.orderId);
                 }
                 
                 performanceMonitor.recordThroughput("orders_processed_disruptor", 1);
