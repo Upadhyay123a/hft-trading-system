@@ -86,6 +86,10 @@ public class MarketMakingStrategy implements Strategy {
         boolean canBuy = currentPosition < maxPosition;
         boolean canSell = currentPosition > -maxPosition;
         
+        // Debug logging
+        logger.debug("MarketMaking: midPrice={}, bidPrice={}, askPrice={}, canBuy={}, canSell={}, activeBuy={}, activeSell={}", 
+                    midPrice, bidPrice, askPrice, canBuy, canSell, activeBuyOrderId, activeSellOrderId);
+        
         // Place buy order
         if (canBuy && activeBuyOrderId == null) {
             Order buyOrder = new Order(
@@ -98,6 +102,11 @@ public class MarketMakingStrategy implements Strategy {
             );
             orders.add(buyOrder);
             activeBuyOrderId = buyOrder.orderId;
+            logger.info("MarketMaking: Placed BUY order - ID={}, price={}, qty={}", 
+                       buyOrder.orderId, bidPrice, orderSize);
+        } else {
+            logger.debug("MarketMaking: Not placing BUY order - canBuy={}, activeBuyId={}", 
+                        canBuy, activeBuyOrderId);
         }
         
         // Place sell order
@@ -112,8 +121,14 @@ public class MarketMakingStrategy implements Strategy {
             );
             orders.add(sellOrder);
             activeSellOrderId = sellOrder.orderId;
+            logger.info("MarketMaking: Placed SELL order - ID={}, price={}, qty={}", 
+                       sellOrder.orderId, askPrice, orderSize);
+        } else {
+            logger.debug("MarketMaking: Not placing SELL order - canSell={}, activeSellId={}", 
+                        canSell, activeSellOrderId);
         }
         
+        logger.debug("MarketMaking: Returning {} orders", orders.size());
         return orders;
     }
     
@@ -134,10 +149,21 @@ public class MarketMakingStrategy implements Strategy {
         
         // Calculate realized P&L (simplified)
         double tradeValue = trade.getPriceAsDouble() * trade.quantity;
-        if (trade.buyOrderId == activeBuyOrderId) {
-            totalPnL -= tradeValue; // Paid for long
-        } else {
-            totalPnL += tradeValue; // Received for short
+        
+        // Check if this was our buy order that got filled
+        boolean wasOurBuy = (activeBuyOrderId != null && trade.buyOrderId == activeBuyOrderId);
+        boolean wasOurSell = (activeSellOrderId != null && trade.sellOrderId == activeSellOrderId);
+        
+        if (wasOurBuy) {
+            // We bought - reduce P&L (we paid money)
+            totalPnL -= tradeValue;
+            logger.debug("Buy trade: price={}, qty={}, value={}, pnl={}", 
+                        trade.getPriceAsDouble(), trade.quantity, tradeValue, totalPnL);
+        } else if (wasOurSell) {
+            // We sold - increase P&L (we received money)
+            totalPnL += tradeValue;
+            logger.debug("Sell trade: price={}, qty={}, value={}, pnl={}", 
+                        trade.getPriceAsDouble(), trade.quantity, tradeValue, totalPnL);
         }
     }
     
