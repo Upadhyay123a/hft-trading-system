@@ -415,11 +415,15 @@ public class RealTimeMLProcessor {
     
     /**
      * Send trading signal to trading engine
+     * FIX: Python-style {:.3f}/{:.2f} replaced with String.format() in SLF4J logger call.
      */
     private void sendTradingSignal(TradingSignal signal) {
         // In a real implementation, this would send to the trading engine
-        logger.info("🚀 Trading Signal: {} {} (strength: {:.3f}, confidence: {:.2f})",
-                   signal.action, signal.symbolId, signal.strength, signal.confidence);
+        // FIX: was "{:.3f}" and "{:.2f}" — invalid SLF4J format specifiers
+        logger.info("Trading Signal: {} {} (strength: {}, confidence: {})",
+                   signal.action, signal.symbolId,
+                   String.format("%.3f", signal.strength),
+                   String.format("%.2f", signal.confidence));
     }
     
     /**
@@ -450,6 +454,7 @@ public class RealTimeMLProcessor {
     
     /**
      * Monitor performance
+     * FIX: Python-style {:.1f} replaced with String.format() in all SLF4J logger calls.
      */
     private void monitorPerformance() {
         if (!isRunning) return;
@@ -469,17 +474,22 @@ public class RealTimeMLProcessor {
         );
         performanceStats.set(stats);
         
-        // Log performance
-        logger.info("📊 ML Performance: ticks={}, features={}, predictions={}, avgLatency={:.1f}μs, throughput={:.1f} tps",
-                   ticks, features, predictions, avgLatency, throughput);
+        // FIX: was "{:.1f}μs" and "{:.1f} tps" — invalid SLF4J format specifiers
+        logger.info("ML Performance: ticks={}, features={}, predictions={}, avgLatency={}μs, throughput={} tps",
+                   ticks, features, predictions,
+                   String.format("%.1f", avgLatency),
+                   String.format("%.1f", throughput));
         
-        // Performance alerts
+        // FIX: was "{:.1f}μs" — invalid SLF4J format specifier
         if (avgLatency > TOTAL_PIPELINE_TARGET_US) {
-            logger.warn("⚠️ High latency detected: {:.1f}μs (target: <{}μs)", avgLatency, TOTAL_PIPELINE_TARGET_US);
+            logger.warn("High latency detected: {}μs (target: <{}μs)",
+                    String.format("%.1f", avgLatency), TOTAL_PIPELINE_TARGET_US);
         }
         
+        // FIX: was "{:.1f} tps" — invalid SLF4J format specifier
         if (throughput < 1000) { // Less than 1000 ticks per second
-            logger.warn("⚠️ Low throughput detected: {:.1f} tps", throughput);
+            logger.warn("Low throughput detected: {} tps",
+                    String.format("%.1f", throughput));
         }
     }
     
