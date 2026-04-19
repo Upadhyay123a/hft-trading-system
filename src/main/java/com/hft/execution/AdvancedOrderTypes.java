@@ -188,7 +188,7 @@ public class AdvancedOrderTypes {
         
         private Order createOrder(double volume) {
             long orderIdNano     = System.nanoTime();
-            int resolvedSymbolId = SymbolMapper.getId(symbol);
+            int resolvedSymbolId = SymbolMapper.getSymbolId(symbol);
             // Order(orderId, symbolId, price, quantity, side, type)
             // TODO: replace placeholder price with live MarketDataFeed injection
             long price = 50000 * 10000L; // placeholder price ($50,000 * scale factor)
@@ -283,7 +283,7 @@ public class AdvancedOrderTypes {
         
         private Order createOrder(double volume) {
             long orderIdNano     = System.nanoTime();
-            int resolvedSymbolId = SymbolMapper.getId(symbol);
+            int resolvedSymbolId = SymbolMapper.getSymbolId(symbol);
             // Order(orderId, symbolId, price, quantity, side, type)
             // TODO: replace placeholder price with live MarketDataFeed injection
             long price = 50000 * 10000L; // placeholder price ($50,000 * scale factor)
@@ -364,7 +364,7 @@ public class AdvancedOrderTypes {
         
         private Order createVisibleOrder(double volume) {
             long orderIdNano     = System.nanoTime();
-            int resolvedSymbolId = SymbolMapper.getId(symbol);
+            int resolvedSymbolId = SymbolMapper.getSymbolId(symbol);
             byte side            = isBuy ? (byte) 0 : (byte) 1;
             // Order(orderId, symbolId, price, quantity, side, type)
             // price is injected via IcebergAlgorithm constructor — already correct
@@ -477,7 +477,7 @@ public class AdvancedOrderTypes {
         
         private Order createMLOptimizedOrder(double volume, double predictedPrice) {
             long orderIdNano     = System.nanoTime();
-            int resolvedSymbolId = SymbolMapper.getId(symbol);
+            int resolvedSymbolId = SymbolMapper.getSymbolId(symbol);
             byte side            = predictedPrice > 50000 ? (byte) 0 : (byte) 1; // Buy if price predicted to rise
             // Order(orderId, symbolId, price, quantity, side, type)
             // price is derived from ML prediction — correct
