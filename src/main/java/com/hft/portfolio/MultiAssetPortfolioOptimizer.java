@@ -228,6 +228,8 @@ public class MultiAssetPortfolioOptimizer {
     
     /**
      * Calculate covariance matrix
+     * FIX: Convert List<Double> to double[] via explicit loop instead of stream
+     *      to avoid unboxing overhead in the hot path and ensure correct typing.
      */
     private void calculateCovarianceMatrix() {
         int n = assets.size();
@@ -240,9 +242,10 @@ public class MultiAssetPortfolioOptimizer {
                 AssetData data1 = assetDataMap.get(asset1);
                 AssetData data2 = assetDataMap.get(asset2);
                 
-                // Calculate correlation using historical returns
-                double[] returns1 = data1.returns.stream().mapToDouble(Double::doubleValue).toArray();
-                double[] returns2 = data2.returns.stream().mapToDouble(Double::doubleValue).toArray();
+                // FIX: Convert List<Double> → double[] via explicit loop (avoids autoboxing)
+                double[] returns1 = toDoubleArray(data1.returns);
+                double[] returns2 = toDoubleArray(data2.returns);
+
                 double correlation = calculateCorrelation(returns1, returns2);
                 double volatility1 = calculateVolatility(returns1);
                 double volatility2 = calculateVolatility(returns2);
@@ -251,6 +254,17 @@ public class MultiAssetPortfolioOptimizer {
                 covarianceMatrix.setCovariance(i, j, covariance);
             }
         }
+    }
+
+    /**
+     * Convert List<Double> to double[] without streams to avoid boxing overhead.
+     */
+    private static double[] toDoubleArray(List<Double> list) {
+        double[] arr = new double[list.size()];
+        for (int k = 0; k < list.size(); k++) {
+            arr[k] = list.get(k);
+        }
+        return arr;
     }
     
     /**
@@ -314,6 +328,7 @@ public class MultiAssetPortfolioOptimizer {
     
     /**
      * Markowitz mean-variance optimization
+     * FIX: Guard against zero-volatility division (produces NaN/Infinity weights).
      */
     private double[] markowitzOptimization() {
         int n = assets.size();
@@ -332,18 +347,13 @@ public class MultiAssetPortfolioOptimizer {
             }
         }
         
-        // Risk aversion parameter
-        double riskAversion = 1.0;
-        
-        // Simplified optimization (equal risk contribution)
+        // Simplified optimization (inverse volatility / equal risk contribution)
         double[] weights = new double[n];
-        double sumReturns = 0.0;
         
         for (int i = 0; i < n; i++) {
-            // Simplified: inverse volatility weighting
             double volatility = Math.sqrt(covMatrix[i][i]);
-            weights[i] = 1.0 / volatility;
-            sumReturns += returns[i] * weights[i];
+            // FIX: Guard against zero volatility to avoid division by zero (NaN/Infinity)
+            weights[i] = (volatility > 0.0) ? 1.0 / volatility : 1.0;
         }
         
         // Normalize weights
@@ -424,6 +434,8 @@ public class MultiAssetPortfolioOptimizer {
     
     /**
      * Monitor portfolio risk
+     * FIX: Python-style {:.2f} format specifiers replaced with String.format().
+     * FIX: VaR sign corrected — a loss VaR must be negative to trigger the < -50000 guard.
      */
     private void monitorRisk() {
         try {
@@ -434,7 +446,9 @@ public class MultiAssetPortfolioOptimizer {
             
             // Check risk limits
             if (portfolioVolatility > 0.2) { // 20% volatility threshold
-                logger.warn("High portfolio volatility detected: {:.2f}%", portfolioVolatility * 100);
+                // FIX: was "{:.2f}%" — invalid SLF4J format; use String.format()
+                logger.warn("High portfolio volatility detected: {}%",
+                        String.format("%.2f", portfolioVolatility * 100));
                 riskEvents.incrementAndGet();
                 
                 // Risk reduction (simplified)
@@ -442,7 +456,7 @@ public class MultiAssetPortfolioOptimizer {
             }
             
             if (var < -50000) { // $50k VaR threshold
-                logger.warn("High VaR detected: ${}", var);
+                logger.warn("High VaR detected: ${}", String.format("%.2f", var));
                 riskEvents.incrementAndGet();
             }
             
@@ -453,6 +467,8 @@ public class MultiAssetPortfolioOptimizer {
     
     /**
      * Track portfolio performance
+     * FIX: Python-style {:.2f} format specifiers replaced with String.format().
+     * FIX: O(n²) indexOf() inside calculatePortfolioReturn() loop removed — see that method.
      */
     private void trackPerformance() {
         try {
@@ -474,8 +490,12 @@ public class MultiAssetPortfolioOptimizer {
                 performanceHistory.remove(0);
             }
             
-            logger.info("Portfolio Performance: Value=${}, PnL=${}, Return={:.2f}%, Volatility={:.2f}%",
-                       portfolioValue, portfolioPnL, currentReturn * 100, calculatePortfolioVolatility() * 100);
+            // FIX: was "{:.2f}%" — invalid SLF4J format; use String.format()
+            logger.info("Portfolio Performance: Value=${}, PnL=${}, Return={}%, Volatility={}%",
+                    String.format("%.2f", portfolioValue),
+                    String.format("%.2f", portfolioPnL),
+                    String.format("%.2f", currentReturn * 100),
+                    String.format("%.2f", calculatePortfolioVolatility() * 100));
             
         } catch (Exception e) {
             logger.error("Performance tracking failed", e);
@@ -566,22 +586,34 @@ public class MultiAssetPortfolioOptimizer {
         return Math.sqrt(portfolioVariance);
     }
     
+    /**
+     * FIX: Replaced O(n²) assets.indexOf(asset) call inside the loop with the
+     *      loop index directly, reducing complexity from O(n²) to O(n).
+     */
     private double calculatePortfolioReturn() {
         double portfolioReturn = 0.0;
         
-        for (String asset : assets) {
+        for (int i = 0; i < assets.size(); i++) {
+            String asset = assets.get(i);
             double weight = currentWeights.get(asset);
-            double expectedReturn = expectedReturns.getReturn(assets.indexOf(asset));
+            // FIX: use loop index i directly — was assets.indexOf(asset) which is O(n) per iteration
+            double expectedReturn = expectedReturns.getReturn(i);
             portfolioReturn += weight * expectedReturn;
         }
         
         return portfolioReturn;
     }
     
+    /**
+     * FIX: VaR must be negative to represent a loss.
+     *      The original returned a positive value, so the check (var < -50000)
+     *      in monitorRisk() could never trigger. Negated to correct the sign.
+     */
     private double calculateVaR() {
         // Simplified VaR calculation (95% confidence)
         double portfolioVolatility = calculatePortfolioVolatility();
-        return portfolioValue * portfolioVolatility * 1.65; // 95% VaR
+        // FIX: negate — VaR is a loss, so it must be negative for the < -50000 guard to work
+        return -(portfolioValue * portfolioVolatility * 1.65); // 95% VaR
     }
     
     private void reduceRisk() {
