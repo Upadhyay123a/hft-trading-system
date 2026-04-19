@@ -97,8 +97,8 @@ public class RealDataMLIntegrationTest {
                 
                 for (var entry : results.getModelResults().entrySet()) {
                     var result = entry.getValue();
-                    logger.info("   - {}: Accuracy={:.4f}, Time={}ms", 
-                               result.modelName, result.accuracy, result.trainingTimeMs);
+                    logger.info("   - {}: Accuracy={}, Time={}ms", 
+                               result.modelName, String.format("%.4f", result.accuracy), result.trainingTimeMs);
                 }
                 
                 if (!results.errors.isEmpty()) {
@@ -135,8 +135,8 @@ public class RealDataMLIntegrationTest {
             
             for (var entry : models.entrySet()) {
                 var metadata = entry.getValue();
-                logger.info("   - {}: v{}, Accuracy={:.4f}", 
-                           metadata.modelName, metadata.version, metadata.accuracy);
+                logger.info("   - {}: v{}, Accuracy={}\n", 
+                           metadata.modelName, metadata.version, String.format("%.4f", metadata.accuracy));
                 
                 // Test loading
                 var model = modelPersistence.loadModel(entry.getKey());
@@ -195,18 +195,18 @@ public class RealDataMLIntegrationTest {
                 long timeDiff = currentStats.ticksProcessed - lastStats.ticksProcessed;
                 double tps = timeDiff; // ticks per second
                 
-                logger.info("   - Second {}: ticks={}, features={}, predictions={}, latency={:.1f}μs, throughput={:.1f} tps",
+                logger.info("   - Second {}: ticks={}, features={}, predictions={}, latency={}μs, throughput={} tps",
                            i + 1, currentStats.ticksProcessed, currentStats.featuresComputed, 
-                           currentStats.predictionsMade, currentStats.avgLatencyUs, tps);
+                           currentStats.predictionsMade, String.format("%.1f", currentStats.avgLatencyUs), tps);
                 
                 // Check latency targets
                 if (currentStats.avgLatencyUs > 20) {
-                    logger.warn("     ⚠️ High latency: {:.1f}μs (target: <20μs)", currentStats.avgLatencyUs);
+                    logger.warn("     ⚠️ High latency: {}μs (target: <20μs)", String.format("%.1f", currentStats.avgLatencyUs));
                 }
                 
                 // Check throughput
                 if (tps < 100) {
-                    logger.warn("     ⚠️ Low throughput: {:.1f} tps (target: >100 tps)", tps);
+                    logger.warn("     ⚠️ Low throughput: {} tps (target: >100 tps)", String.format("%.1f", tps));
                 }
                 
                 lastStats = currentStats;
@@ -219,10 +219,10 @@ public class RealDataMLIntegrationTest {
             logger.info("     - Total ticks: {}", finalStats.ticksProcessed);
             logger.info("     - Total features: {}", finalStats.featuresComputed);
             logger.info("     - Total predictions: {}", finalStats.predictionsMade);
-            logger.info("     - Average latency: {:.1f}μs", finalStats.avgLatencyUs);
+            logger.info("     - Average latency: {}μs", String.format("%.1f", finalStats.avgLatencyUs));
             logger.info("     - Current regime: {}", finalStats.currentRegime);
-            logger.info("     - Last prediction: {:.2f}", finalStats.lastPrediction);
-            logger.info("     - Last confidence: {:.2f}", finalStats.lastConfidence);
+            logger.info("     - Last prediction: {}", String.format("%.2f", finalStats.lastPrediction));
+            logger.info("     - Last confidence: {}", String.format("%.2f", finalStats.lastConfidence));
             
             // Validate performance targets
             boolean latencyOk = finalStats.avgLatencyUs < 20;
@@ -234,8 +234,8 @@ public class RealDataMLIntegrationTest {
                 logger.info("   🚀 All performance targets achieved!");
             } else {
                 logger.warn("⚠️ Real-Time Processing Test completed with warnings:");
-                if (!latencyOk) logger.warn("   - Latency too high: {:.1f}μs", finalStats.avgLatencyUs);
-                if (!throughputOk) logger.warn("   - Throughput too low: {:.1f} tps", finalStats.throughputTps);
+                if (!latencyOk) logger.warn("   - Latency too high: {}μs", String.format("%.1f", finalStats.avgLatencyUs));
+                if (!throughputOk) logger.warn("   - Throughput too low: {} tps", String.format("%.1f", finalStats.throughputTps));
                 if (!predictionsOk) logger.warn("   - No predictions made");
             }
             
@@ -280,7 +280,7 @@ public class RealDataMLIntegrationTest {
             
             // Performance summary
             logger.info("✅ Integration Performance Test Results:");
-            logger.info("   - Average latency per prediction: {:.3f} ms", avgLatency);
+            logger.info("   - Average latency per prediction: {} ms", String.format("%.3f", avgLatency));
             logger.info("   - Target: <1 ms per prediction");
             
             if (avgLatency < 1.0) {
@@ -292,7 +292,7 @@ public class RealDataMLIntegrationTest {
             // Memory usage check
             Runtime runtime = Runtime.getRuntime();
             long usedMemory = runtime.totalMemory() - runtime.freeMemory();
-            logger.info("   - Memory usage: {:.1f} MB", usedMemory / 1024.0 / 1024.0);
+            logger.info("   - Memory usage: {} MB", String.format("%.1f", usedMemory / 1024.0 / 1024.0));
             
             // Check for memory leaks
             System.gc();
@@ -303,7 +303,7 @@ public class RealDataMLIntegrationTest {
             if (memoryIncrease < 10) { // Less than 10MB increase
                 logger.info("   ✅ Memory usage stable");
             } else {
-                logger.warn("   ⚠️ Memory increase detected: {:.1f} MB", memoryIncrease);
+                logger.warn("   ⚠️ Memory increase detected: {} MB", String.format("%.1f", memoryIncrease));
             }
             
         } catch (Exception e) {
