@@ -176,6 +176,8 @@ public class UltraHighPerformanceEngine {
      * Process order update
      */
     public void processOrderUpdate(Order order) {
+        logger.debug("Engine received order {} - processing", order.orderId);
+        
         // Publish to Disruptor
         disruptorEngine.publishOrder(order);
         
@@ -186,6 +188,8 @@ public class UltraHighPerformanceEngine {
         
         ordersProcessed.incrementAndGet();
         messagesProcessed.incrementAndGet();
+        
+        logger.debug("Engine processed order {} - total orders: {}", order.orderId, ordersProcessed.get());
     }
     
     /**

@@ -269,7 +269,10 @@ public class DisruptorEngine {
                 
                 // Send order to engine for counting and external processing
                 if (engine != null) {
+                    logger.debug("Disruptor sending order {} to engine", order.orderId);
                     engine.processOrderUpdate(order);
+                } else {
+                    logger.warn("Engine reference is null - order {} not sent to engine", order.orderId);
                 }
                 
                 // Execute order
