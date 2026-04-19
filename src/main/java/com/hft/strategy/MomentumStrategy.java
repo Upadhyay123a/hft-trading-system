@@ -111,7 +111,7 @@ public class MomentumStrategy implements Strategy {
             ourBuyOrderIds.add(orderId); // FIX 4: track as our buy order
             orders.add(buyOrder);
             lastTradeTime = now;
-            logger.info("BUY signal: momentum={:.4f}%", priceChange);
+            logger.info("BUY signal: momentum={}%", String.format("%.4f", priceChange));
         } 
         else if (priceChange < -threshold && currentPosition > -maxPosition) {
             // Bearish momentum - sell
@@ -127,7 +127,7 @@ public class MomentumStrategy implements Strategy {
             ourSellOrderIds.add(orderId); // FIX 4: track as our sell order
             orders.add(sellOrder);
             lastTradeTime = now;
-            logger.info("SELL signal: momentum={:.4f}%", priceChange);
+            logger.info("SELL signal: momentum={}%", String.format("%.4f", priceChange));
         }
         
         return orders;
