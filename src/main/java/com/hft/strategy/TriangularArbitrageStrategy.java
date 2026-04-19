@@ -53,7 +53,7 @@ public class TriangularArbitrageStrategy implements Strategy {
         logger.info("Triangular Arbitrage Strategy initialized:");
         logger.info("Base pair: {}, Quote pair: {}, Cross pair: {}", basePair, quotePair, crossPair);
         logger.info("Min profit threshold: {}%, Order size: {}, Max slippage: {}%", 
-            minProfitThreshold * 100, orderSize, maxSlippage * 100);
+            String.format("%.1f", minProfitThreshold * 100), orderSize, String.format("%.1f", maxSlippage * 100));
     }
     
     @Override
@@ -86,8 +86,7 @@ public class TriangularArbitrageStrategy implements Strategy {
         ArbitrageOpportunity opportunity = detectArbitrageOpportunity();
         if (opportunity != null) {
             opportunitiesDetected++;
-            logger.info("Arbitrage opportunity detected: {}% profit", 
-                String.format("%.4f", opportunity.profitPercent * 100));
+            logger.info("Arbitrage opportunity detected: " + String.format("%.4f", opportunity.profitPercent * 100) + "% profit");
             
             // Execute arbitrage
             orders = executeArbitrage(opportunity, orderBook);
@@ -296,7 +295,7 @@ public class TriangularArbitrageStrategy implements Strategy {
                 totalPnL += realizedPnL;
                 tradesExecuted++;
                 
-                logger.info("Arbitrage completed: P&L ${}, Total P&L ${}", 
+                logger.info("Arbitrage completed: P&L {}, Total P&L {}\n", 
                     String.format("%.4f", realizedPnL), 
                     String.format("%.4f", totalPnL));
                 
