@@ -57,7 +57,7 @@ public class StatisticalArbitrageStrategy implements Strategy {
         
         logger.info("Statistical Arbitrage Strategy initialized:");
         logger.info("Symbols: {}, Lookback: {}, Z-score threshold: {}, Min spread: {}%", 
-            Arrays.toString(symbols), lookbackPeriod, zScoreThreshold, minSpread * 100);
+            Arrays.toString(symbols), lookbackPeriod, zScoreThreshold, String.format("%.1f", minSpread * 100));
     }
     
     @Override
@@ -91,8 +91,8 @@ public class StatisticalArbitrageStrategy implements Strategy {
         TradingSignal signal = generateSignal();
         if (signal != null) {
             signalsGenerated++;
-            logger.info("Statistical arbitrage signal: {}, Z-score: {}", 
-                signal.direction, String.format("%.3f", signal.zScore));
+            logger.info(String.format("Statistical arbitrage signal: %s, Z-score: %.3f", 
+                signal.direction, signal.zScore));
             
             // Execute trades
             orders = executeSignal(signal, orderBook);
@@ -325,7 +325,7 @@ public class StatisticalArbitrageStrategy implements Strategy {
                 totalPnL += realizedPnL;
                 tradesExecuted++;
                 
-                logger.info("Statistical arbitrage completed: P&L ${}, Total P&L ${}", 
+                logger.info("Statistical arbitrage completed: P&L {}, Total P&L {}\n", 
                     String.format("%.4f", realizedPnL), 
                     String.format("%.4f", totalPnL));
                 
