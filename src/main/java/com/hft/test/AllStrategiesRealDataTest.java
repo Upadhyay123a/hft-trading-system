@@ -53,7 +53,7 @@ public class AllStrategiesRealDataTest {
         
         logger.info("✅ Market Making Strategy Test Results:");
         logger.info("  Strategy: {}", strategy.getName());
-        logger.info("  P&L: ${:.2f}", strategy.getPnL());
+        logger.info("  P&L: {}", String.format("%.2f", strategy.getPnL()));
         logger.info("  Mathematical Formula: MidPrice = (BestBid + BestAsk) / 2");
         logger.info("  Quote Calculation: BidPrice = MidPrice - (Spread / 2)");
         logger.info("  Profit per Trade: Profit = (AskPrice - BidPrice) × OrderSize");
@@ -73,7 +73,7 @@ public class AllStrategiesRealDataTest {
         
         logger.info("✅ Momentum Strategy Test Results:");
         logger.info("  Strategy: {}", strategy.getName());
-        logger.info("  P&L: ${:.2f}", strategy.getPnL());
+        logger.info("  P&L: {}", String.format("%.2f", strategy.getPnL()));
         logger.info("  Mathematical Formula: PriceChange = ((CurrentPrice - OldestPrice) / OldestPrice) × 100%");
         logger.info("  Signal Logic: BUY if PriceChange > +Threshold, SELL if PriceChange < -Threshold");
         logger.info("  Time Complexity: O(n) → O(1) with circular buffer optimization");
@@ -94,7 +94,7 @@ public class AllStrategiesRealDataTest {
         
         logger.info("✅ Statistical Arbitrage Strategy Test Results:");
         logger.info("  Strategy: {}", strategy.getName());
-        logger.info("  P&L: ${:.2f}", strategy.getPnL());
+        logger.info("  P&L: {}", String.format("%.2f", strategy.getPnL()));
         logger.info("  Mathematical Formula: Y = β₀ + β₁X₁ + β₂X₂ + ... + ε");
         logger.info("  Hedge Ratio: β = (nΣXY - ΣXΣY) / (nΣX² - (ΣX)²)");
         logger.info("  Z-Score: ZScore = (CurrentSpread - MeanSpread) / StandardDeviation");
@@ -115,7 +115,7 @@ public class AllStrategiesRealDataTest {
         
         logger.info("✅ Triangular Arbitrage Strategy Test Results:");
         logger.info("  Strategy: {}", strategy.getName());
-        logger.info("  P&L: ${:.2f}", strategy.getPnL());
+        logger.info("  P&L: {}", String.format("%.2f", strategy.getPnL()));
         logger.info("  Mathematical Formula: ImpliedCrossRate = QuotePairPrice / BasePairPrice");
         logger.info("  Arbitrage Profit: Profit = ((OrderSize / BasePrice) / CrossPrice) × QuotePrice - OrderSize");
         logger.info("  Profit Percentage: ProfitPercent = Profit / OrderSize × 100%");
