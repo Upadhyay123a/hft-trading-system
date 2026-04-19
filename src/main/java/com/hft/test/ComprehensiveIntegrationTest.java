@@ -565,7 +565,7 @@ public class ComprehensiveIntegrationTest {
             // Test strategy performance
             logger.info("   Testing strategy performance...");
             for (Map.Entry<String, Double> entry : strategyPnL.entrySet()) {
-                logger.info("     - {}: {}\n", entry.getKey(), String.format("%.2f", entry.getValue()));
+                logger.info("     - {}: ${:.2f}", entry.getKey(), entry.getValue());
                 result.addMetric(entry.getKey() + " PnL", entry.getValue(), "USD");
             }
             
@@ -695,9 +695,9 @@ public class ComprehensiveIntegrationTest {
             
             logger.info("✅ Risk Management Test PASSED");
             logger.info("   - Position limit check: {}", positionLimitOk ? "PASS" : "FAIL");
-            logger.info("   - Portfolio risk: {}%", String.format("%.2f", portfolioRisk * 100));
-            logger.info("   - Drawdown: {}%", String.format("%.2f", drawdown * 100));
-            logger.info("   - VaR (95%): {}", String.format("%.2f", var));
+            logger.info("   - Portfolio risk: {:.2f}%", portfolioRisk * 100);
+            logger.info("   - Drawdown: {:.2f}%", drawdown * 100);
+            logger.info("   - VaR (95%): ${:.2f}", var);
             logger.info("   - Calculation time: {:.1f} ms", result.getMetric("Risk calculation time"));
             
         } catch (Exception e) {
@@ -747,10 +747,10 @@ public class ComprehensiveIntegrationTest {
             testResults.put("Portfolio Optimization", result);
             
             logger.info("✅ Portfolio Optimization Test PASSED");
-            logger.info("   - Initial value: {}", String.format("%.2f", result.getMetric("Initial portfolio value")));
-            logger.info("   - Final value: {}", String.format("%.2f", result.getMetric("Final portfolio value")));
-            logger.info("   - Portfolio PnL: {}", String.format("%.2f", result.getMetric("Portfolio PnL")));
-            logger.info("   - Volatility: {}%", String.format("%.2f", (Double) result.getMetric("Portfolio volatility") * 100));
+            logger.info("   - Initial value: ${:.2f}", result.getMetric("Initial portfolio value"));
+            logger.info("   - Final value: ${:.2f}", result.getMetric("Final portfolio value"));
+            logger.info("   - Portfolio PnL: ${:.2f}", result.getMetric("Portfolio PnL"));
+            logger.info("   - Volatility: {:.2f}%", (Double) result.getMetric("Portfolio volatility") * 100);
             logger.info("   - Optimization time: {:.1f} seconds", result.getMetric("Optimization time"));
             
         } catch (Exception e) {
@@ -839,7 +839,7 @@ public class ComprehensiveIntegrationTest {
             logger.info("   Testing Disruptor engine...");
             long startTime = System.nanoTime();
             
-            DisruptorEngine disruptor = new DisruptorEngine(strategies.get(0), riskManager, null);
+            DisruptorEngine disruptor = new DisruptorEngine(strategies.get(0), riskManager);
             
             // Test message throughput
             AtomicInteger messageCount = new AtomicInteger(0);
@@ -957,9 +957,9 @@ public class ComprehensiveIntegrationTest {
             
             logger.info("✅ Integration Performance Test PASSED");
             logger.info("   - Total trades: {}", result.getMetric("End-to-end trades"));
-            logger.info("   - Total PnL: {}", String.format("%.2f", result.getMetric("End-to-end PnL")));
-            logger.info("   - Average latency: {} ms", String.format("%.3f", result.getMetric("End-to-end latency")));
-            logger.info("   - Processing throughput: {} trades/sec", String.format("%.0f", result.getMetric("Processing throughput")));
+            logger.info("   - Total PnL: ${:.2f}", result.getMetric("End-to-end PnL"));
+            logger.info("   - Average latency: {:.3f} ms", result.getMetric("End-to-end latency"));
+            logger.info("   - Processing throughput: {:.0f} trades/sec", result.getMetric("Processing throughput"));
             
         } catch (Exception e) {
             logger.error("❌ Integration Performance Test FAILED", e);

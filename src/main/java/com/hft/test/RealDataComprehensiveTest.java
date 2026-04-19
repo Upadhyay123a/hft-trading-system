@@ -85,9 +85,9 @@ public class RealDataComprehensiveTest {
             double totalTime = (endTime - startTime) / 1e9;
             
             logger.info("✅ Core Components Real Data Test PASSED");
-            logger.info("   - Ticks: {} ({} ticks/sec)", realTicks.size(), String.format("%.1f", realTicks.size() / totalTime));
-            logger.info("   - Orders: {} ({} orders/sec)", realOrders.size(), String.format("%.1f", realOrders.size() / totalTime));
-            logger.info("   - Trades: {} ({} trades/sec)", realTrades.size(), String.format("%.1f", realTrades.size() / totalTime));
+            logger.info("   - Ticks: {} ({:.1f} ticks/sec)", realTicks.size(), realTicks.size() / totalTime);
+            logger.info("   - Orders: {} ({:.1f} orders/sec)", realOrders.size(), realOrders.size() / totalTime);
+            logger.info("   - Trades: {} ({:.1f} trades/sec)", realTrades.size(), realTrades.size() / totalTime);
             logger.info("   - Total time: {:.3f} seconds", totalTime);
             
         } catch (Exception e) {
@@ -132,8 +132,8 @@ public class RealDataComprehensiveTest {
                 totalPnL = strategy.getPnL();
                 
                 if (i % 1000 == 0) {
-                    logger.info("   Progress: {}/5000, Orders: {}, Trades: {}, P&L: {}\n", 
-                               i, totalOrders, tradesExecuted, String.format("%.2f", totalPnL));
+                    logger.info("   Progress: {}/5000, Orders: {}, Trades: {}, P&L: ${:.2f}", 
+                               i, totalOrders, tradesExecuted, totalPnL);
                 }
             }
             
@@ -146,8 +146,8 @@ public class RealDataComprehensiveTest {
             logger.info("   - Total ticks processed: {}", realTicks.size());
             logger.info("   - Orders generated: {}", totalOrders);
             logger.info("   - Trades executed: {}", tradesExecuted);
-            logger.info("   - Final P&L: {}", String.format("%.2f", totalPnL));
-            logger.info("   - Processing rate: {} ticks/sec", String.format("%.1f", realTicks.size() / totalTime));
+            logger.info("   - Final P&L: ${:.2f}", totalPnL);
+            logger.info("   - Processing rate: {:.1f} ticks/sec", realTicks.size() / totalTime);
             
         } catch (Exception e) {
             logger.error("❌ MarketMakingStrategy Real Data Test FAILED", e);
@@ -191,8 +191,8 @@ public class RealDataComprehensiveTest {
                 totalPnL = strategy.getPnL();
                 
                 if (i % 1000 == 0) {
-                    logger.info("   Progress: {}/5000, Orders: {}, Trades: {}, P&L: {}\n", 
-                               i, totalOrders, tradesExecuted, String.format("%.2f", totalPnL));
+                    logger.info("   Progress: {}/5000, Orders: {}, Trades: {}, P&L: ${:.2f}", 
+                               i, totalOrders, tradesExecuted, totalPnL);
                 }
             }
             
@@ -205,8 +205,8 @@ public class RealDataComprehensiveTest {
             logger.info("   - Total ticks processed: {}", realTicks.size());
             logger.info("   - Orders generated: {}", totalOrders);
             logger.info("   - Trades executed: {}", tradesExecuted);
-            logger.info("   - Final P&L: {}", String.format("%.2f", totalPnL));
-            logger.info("   - Processing rate: {} ticks/sec", String.format("%.1f", realTicks.size() / totalTime));
+            logger.info("   - Final P&L: ${:.2f}", totalPnL);
+            logger.info("   - Processing rate: {:.1f} ticks/sec", realTicks.size() / totalTime);
             
         } catch (Exception e) {
             logger.error("❌ MomentumStrategy Real Data Test FAILED", e);
@@ -265,8 +265,8 @@ public class RealDataComprehensiveTest {
                 totalPnL = strategy.getPnL();
                 
                 if (i % 1000 == 0) {
-                    logger.info("   Progress: {}/5000, Orders: {}, Trades: {}, P&L: {}\n", 
-                               i, totalOrders, tradesExecuted, String.format("%.2f", totalPnL));
+                    logger.info("   Progress: {}/5000, Orders: {}, Trades: {}, P&L: ${:.2f}", 
+                               i, totalOrders, tradesExecuted, totalPnL);
                 }
             }
             
@@ -279,8 +279,8 @@ public class RealDataComprehensiveTest {
             logger.info("   - Total ticks processed: {}", realTicks1.size() * 2);
             logger.info("   - Orders generated: {}", totalOrders);
             logger.info("   - Trades executed: {}", tradesExecuted);
-            logger.info("   - Final P&L: {}", String.format("%.2f", totalPnL));
-            logger.info("   - Processing rate: {} ticks/sec", String.format("%.1f", (realTicks1.size() * 2) / totalTime));
+            logger.info("   - Final P&L: ${:.2f}", totalPnL);
+            logger.info("   - Processing rate: {:.1f} ticks/sec", (realTicks1.size() * 2) / totalTime);
             
         } catch (Exception e) {
             logger.error("❌ StatisticalArbitrageStrategy Real Data Test FAILED", e);
@@ -344,8 +344,8 @@ public class RealDataComprehensiveTest {
                 totalPnL = strategy.getPnL();
                 
                 if (i % 500 == 0) {
-                    logger.info("   Progress: {}/3000, Orders: {}, Trades: {}, P&L: {}\n", 
-                               i, totalOrders, tradesExecuted, String.format("%.2f", totalPnL));
+                    logger.info("   Progress: {}/3000, Orders: {}, Trades: {}, P&L: ${:.2f}", 
+                               i, totalOrders, tradesExecuted, totalPnL);
                 }
             }
             
@@ -358,8 +358,8 @@ public class RealDataComprehensiveTest {
             logger.info("   - Total ticks processed: {}", realTicks1.size() * 3);
             logger.info("   - Orders generated: {}", totalOrders);
             logger.info("   - Trades executed: {}", tradesExecuted);
-            logger.info("   - Final P&L: {}", String.format("%.2f", totalPnL));
-            logger.info("   - Processing rate: {} ticks/sec", String.format("%.1f", (realTicks1.size() * 3) / totalTime));
+            logger.info("   - Final P&L: ${:.2f}", totalPnL);
+            logger.info("   - Processing rate: {:.1f} ticks/sec", (realTicks1.size() * 3) / totalTime);
             
         } catch (Exception e) {
             logger.error("❌ TriangularArbitrageStrategy Real Data Test FAILED", e);
@@ -573,11 +573,11 @@ public class RealDataComprehensiveTest {
         double orderRate = orders / time;
         
         if (orderRate < 100) {
-            logger.warn("Low order rate for {}: {} orders/sec", strategyName, String.format("%.1f", orderRate));
+            logger.warn("Low order rate for {}: {:.1f} orders/sec", strategyName, orderRate);
         }
         
         if (pnl < -10000) {
-            logger.warn("High loss for {}: {}", strategyName, String.format("%.2f", pnl));
+            logger.warn("High loss for {}: ${:.2f}", strategyName, pnl);
         }
         
         logger.info("✅ {} performance validated", strategyName);
