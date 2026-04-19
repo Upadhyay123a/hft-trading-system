@@ -44,7 +44,7 @@ public class SimpleStrategyTest {
             
             logger.info("✅ Market Making Strategy Test Results:");
             logger.info("  Strategy: {}", strategy.getName());
-            logger.info("  Final P&L: ${:.2f}", strategy.getPnL());
+            logger.info("  Final P&L: {}", String.format("%.2f", strategy.getPnL()));
             logger.info("  Status: WORKING");
             
         } catch (Exception e) {
@@ -67,7 +67,7 @@ public class SimpleStrategyTest {
             
             logger.info("✅ Momentum Strategy Test Results:");
             logger.info("  Strategy: {}", strategy.getName());
-            logger.info("  Final P&L: ${:.2f}", strategy.getPnL());
+            logger.info("  Final P&L: {}", String.format("%.2f", strategy.getPnL()));
             logger.info("  Status: WORKING");
             
         } catch (Exception e) {
@@ -91,7 +91,7 @@ public class SimpleStrategyTest {
             
             logger.info("✅ Statistical Arbitrage Strategy Test Results:");
             logger.info("  Strategy: {}", strategy.getName());
-            logger.info("  Final P&L: ${:.2f}", strategy.getPnL());
+            logger.info("  Final P&L: {}", String.format("%.2f", strategy.getPnL()));
             logger.info("  Status: WORKING");
             
         } catch (Exception e) {
@@ -114,7 +114,7 @@ public class SimpleStrategyTest {
             
             logger.info("✅ Triangular Arbitrage Strategy Test Results:");
             logger.info("  Strategy: {}", strategy.getName());
-            logger.info("  Final P&L: ${:.2f}", strategy.getPnL());
+            logger.info("  Final P&L: {}", String.format("%.2f", strategy.getPnL()));
             logger.info("  Status: WORKING");
             
         } catch (Exception e) {
