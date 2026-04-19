@@ -1,6 +1,7 @@
 package com.hft.execution;
 
 import com.hft.core.Order;
+import com.hft.core.SymbolMapper;
 import com.hft.ml.RealTimeMLProcessor;
 import com.hft.ml.MarketRegimeClassifier;
 import com.hft.ml.MarketRegimeClassifier.MarketRegime;
@@ -179,22 +180,19 @@ public class AdvancedOrderTypes {
                 executedVolume += sliceSize;
                 remainingVolume -= sliceSize;
                 
-                logger.info("TWAP {}: Executed slice {:.6f}, remaining: {:.6f}", orderId, sliceSize, remainingVolume);
+                // FIX: Use %f format specifiers instead of Python-style {:.6f}
+                logger.info("TWAP {}: Executed slice {}, remaining: {}", orderId,
+                        String.format("%.6f", sliceSize), String.format("%.6f", remainingVolume));
             }
         }
         
         private Order createOrder(double volume) {
-            Order order = new Order();
-            order.orderId = System.nanoTime();
-            order.symbolId = 1; // Would map symbol to ID
-            order.quantity = (int) volume;
-            order.side = 0; // Buy (simplified)
-            order.type = 0; // Limit order
-            order.price = 50000 * 10000; // Simplified price
-            order.timestamp = System.nanoTime();
-            order.status = 0; // New
-            
-            return order;
+            long orderIdNano     = System.nanoTime();
+            int resolvedSymbolId = SymbolMapper.getSymbolId(symbol);
+            // Order(orderId, symbolId, price, quantity, side, type)
+            // TODO: replace placeholder price with live MarketDataFeed injection
+            long price = 50000 * 10000L; // placeholder price ($50,000 * scale factor)
+            return new Order(orderIdNano, resolvedSymbolId, price, (int) volume, (byte) 0, (byte) 0);
         }
         
         public ExecutionStats getStats() {
@@ -278,21 +276,18 @@ public class AdvancedOrderTypes {
             executedVolume += actualVolume;
             remainingVolume -= actualVolume;
             
-            logger.info("VWAP {}: Executed slice {:.6f}, remaining: {:.6f}", orderId, actualVolume, remainingVolume);
+            // FIX: Use %f format specifiers instead of Python-style {:.6f}
+            logger.info("VWAP {}: Executed slice {}, remaining: {}", orderId,
+                    String.format("%.6f", actualVolume), String.format("%.6f", remainingVolume));
         }
         
         private Order createOrder(double volume) {
-            Order order = new Order();
-            order.orderId = System.nanoTime();
-            order.symbolId = 1;
-            order.quantity = (int) volume;
-            order.side = 0;
-            order.type = 0;
-            order.price = 50000 * 10000;
-            order.timestamp = System.nanoTime();
-            order.status = 0;
-            
-            return order;
+            long orderIdNano     = System.nanoTime();
+            int resolvedSymbolId = SymbolMapper.getSymbolId(symbol);
+            // Order(orderId, symbolId, price, quantity, side, type)
+            // TODO: replace placeholder price with live MarketDataFeed injection
+            long price = 50000 * 10000L; // placeholder price ($50,000 * scale factor)
+            return new Order(orderIdNano, resolvedSymbolId, price, (int) volume, (byte) 0, (byte) 0);
         }
         
         public ExecutionStats getStats() {
@@ -351,8 +346,10 @@ public class AdvancedOrderTypes {
             Order visibleOrder = createVisibleOrder(finalSliceSize);
             placedOrders.add(visibleOrder);
             
-            logger.info("Iceberg {}: Visible order {:.6f}, hidden remaining: {:.6f}", 
-                       orderId, sliceSize, remainingVolume - sliceSize);
+            // FIX: Use %f format specifiers instead of Python-style {:.6f}
+            logger.info("Iceberg {}: Visible order {}, hidden remaining: {}",
+                    orderId, String.format("%.6f", sliceSize),
+                    String.format("%.6f", remainingVolume - sliceSize));
             
             // Simulate fill and place next slice
             scheduler.schedule(() -> {
@@ -366,17 +363,13 @@ public class AdvancedOrderTypes {
         }
         
         private Order createVisibleOrder(double volume) {
-            Order order = new Order();
-            order.orderId = System.nanoTime();
-            order.symbolId = 1;
-            order.quantity = (int) volume;
-            order.side = isBuy ? (byte)0 : (byte)1;
-            order.type = 0; // Limit order
-            order.price = (long)(price * 10000);
-            order.timestamp = System.nanoTime();
-            order.status = 0;
-            
-            return order;
+            long orderIdNano     = System.nanoTime();
+            int resolvedSymbolId = SymbolMapper.getSymbolId(symbol);
+            byte side            = isBuy ? (byte) 0 : (byte) 1;
+            // Order(orderId, symbolId, price, quantity, side, type)
+            // price is injected via IcebergAlgorithm constructor — already correct
+            long scaledPrice = (long) (price * 10000);
+            return new Order(orderIdNano, resolvedSymbolId, scaledPrice, (int) volume, side, (byte) 0);
         }
         
         public ExecutionStats getStats() {
@@ -431,11 +424,12 @@ public class AdvancedOrderTypes {
                 return; // Execution complete
             }
             
-            // Get ML predictions
-            var mlStats = mlProcessor.getPerformanceStats();
+            // FIX: Use explicit type instead of var to avoid API mismatch ambiguity;
+            // getPerformanceStats() return type is used explicitly for safe field access
+            RealTimeMLProcessor.PerformanceStats mlStats = mlProcessor.getPerformanceStats();
             double predictedPrice = mlStats.lastPrediction;
             double confidence = mlStats.lastConfidence;
-            var currentRegime = mlStats.currentRegime;
+            MarketRegimeClassifier.MarketRegime currentRegime = mlStats.currentRegime;
             
             // Optimize slice size based on ML predictions
             double sliceSize = calculateOptimalSliceSize(predictedPrice, confidence, currentRegime);
@@ -448,8 +442,10 @@ public class AdvancedOrderTypes {
                 executedVolume += sliceSize;
                 remainingVolume -= sliceSize;
                 
-                logger.info("ML-Optimized {}: Executed {:.6f} at regime {} (confidence: {:.2f})", 
-                           orderId, sliceSize, currentRegime, confidence);
+                // FIX: Use %f format specifiers instead of Python-style {:.6f}/{:.2f}
+                logger.info("ML-Optimized {}: Executed {} at regime {} (confidence: {})",
+                        orderId, String.format("%.6f", sliceSize), currentRegime,
+                        String.format("%.2f", confidence));
             }
         }
         
@@ -480,17 +476,13 @@ public class AdvancedOrderTypes {
         }
         
         private Order createMLOptimizedOrder(double volume, double predictedPrice) {
-            Order order = new Order();
-            order.orderId = System.nanoTime();
-            order.symbolId = 1;
-            order.quantity = (int) volume;
-            order.side = predictedPrice > 50000 ? (byte)0 : (byte)1; // Buy if price predicted to rise
-            order.type = 0; // Limit order
-            order.price = (long)(predictedPrice * 10000);
-            order.timestamp = System.nanoTime();
-            order.status = 0;
-            
-            return order;
+            long orderIdNano     = System.nanoTime();
+            int resolvedSymbolId = SymbolMapper.getSymbolId(symbol);
+            byte side            = predictedPrice > 50000 ? (byte) 0 : (byte) 1; // Buy if price predicted to rise
+            // Order(orderId, symbolId, price, quantity, side, type)
+            // price is derived from ML prediction — correct
+            long scaledPrice = (long) (predictedPrice * 10000);
+            return new Order(orderIdNano, resolvedSymbolId, scaledPrice, (int) volume, side, (byte) 0);
         }
         
         public ExecutionStats getStats() {
