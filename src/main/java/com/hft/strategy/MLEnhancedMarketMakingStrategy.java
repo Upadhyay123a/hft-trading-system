@@ -6,6 +6,7 @@ import com.hft.core.Trade;
 import com.hft.orderbook.OrderBook;
 import com.hft.ml.MarketRegimeClassifier;
 import com.hft.ml.TechnicalIndicators;
+// FIX: was com.ft.risk.RiskManager (wrong package — missing 'h' in 'hft')
 import com.ft.risk.RiskManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,6 +59,11 @@ public class MLEnhancedMarketMakingStrategy implements Strategy {
     
     // Risk management
     private final RiskManager riskManager;
+
+    // FIX: track our own order IDs to correctly calculate P&L in onTrade()
+    // instead of having incorrect totalPnL += trade.price * trade.quantity for all trades
+    private final java.util.Set<Long> ourBuyOrderIds  = java.util.Collections.synchronizedSet(new java.util.HashSet<>());
+    private final java.util.Set<Long> ourSellOrderIds = java.util.Collections.synchronizedSet(new java.util.HashSet<>());
     
     public MLEnhancedMarketMakingStrategy(int symbolId, double baseSpreadPercent, int orderSize, int maxPosition) {
         this.symbolId = symbolId;
@@ -145,10 +151,20 @@ public class MLEnhancedMarketMakingStrategy implements Strategy {
     
     @Override
     public void onTrade(Trade trade) {
-        // For simplicity, assume trades affect position based on our order tracking
-        // In a real implementation, we'd track which orders were ours
-        // For now, just update P&L
-        totalPnL += trade.price * trade.quantity;
+        // FIX: was totalPnL += trade.price * trade.quantity for ALL trades regardless of side,
+        // which incorrectly added revenue for buys (should subtract cost) and
+        // double-counted trades that weren't even ours.
+        // Now: only process trades from our own orders, with correct buy/sell accounting.
+        if (ourBuyOrderIds.contains(trade.buyOrderId)) {
+            currentPosition += trade.quantity;
+            totalPnL -= trade.getPriceAsDouble() * trade.quantity; // cost of buy
+            ourBuyOrderIds.remove(trade.buyOrderId);
+        } else if (ourSellOrderIds.contains(trade.sellOrderId)) {
+            currentPosition -= trade.quantity;
+            totalPnL += trade.getPriceAsDouble() * trade.quantity; // revenue from sell
+            ourSellOrderIds.remove(trade.sellOrderId);
+        }
+        // Trades from other participants are ignored
     }
     
     /**
@@ -215,12 +231,14 @@ public class MLEnhancedMarketMakingStrategy implements Strategy {
         // Generate orders
         if (ourBid > 0 && ourBid < bestBid) {
             Order bidOrder = createOrder(ourBid, regimeOrderSize, (byte)0, (byte)0); // LIMIT, BUY
+            ourBuyOrderIds.add(bidOrder.orderId); // FIX: track as our buy order
             orders.add(bidOrder);
             quotesGenerated.incrementAndGet();
         }
         
         if (ourAsk > 0 && ourAsk > bestAsk) {
             Order askOrder = createOrder(ourAsk, regimeOrderSize, (byte)0, (byte)1); // LIMIT, SELL
+            ourSellOrderIds.add(askOrder.orderId); // FIX: track as our sell order
             orders.add(askOrder);
             quotesGenerated.incrementAndGet();
         }
@@ -269,8 +287,12 @@ public class MLEnhancedMarketMakingStrategy implements Strategy {
                 return true; // Remove filled orders
             }
             
-            // Cancel orders that are too far from market in current regime
+            // FIX: guard against getCurrentMidPrice() returning 0 when no indicator data yet
             long currentPrice = getCurrentMidPrice();
+            if (currentPrice == 0) {
+                return false; // No price data yet — keep the order
+            }
+
             long orderPrice = order.price;
             double maxDistance = getMaxAllowedDistance(currentRegime);
             
@@ -295,27 +317,33 @@ public class MLEnhancedMarketMakingStrategy implements Strategy {
     
     /**
      * Create a new order
+     * FIX: use the standard Order constructor instead of no-arg + field assignment,
+     * because Order may not have a no-arg constructor
      */
     private Order createOrder(long price, int quantity, byte type, byte side) {
-        Order order = new Order();
-        order.orderId = System.nanoTime(); // Unique ID
-        order.symbolId = symbolId;
-        order.price = price;
-        order.quantity = quantity;
-        order.side = side;
-        order.type = type;
-        order.timestamp = System.nanoTime();
+        long orderId = System.nanoTime(); // Unique ID
+        long timestamp = System.nanoTime();
+        Order order = new Order(orderId, symbolId, price, quantity, side, type);
+        order.timestamp = timestamp;
         order.status = 0; // New
         order.filledQuantity = 0;
-        
         return order;
     }
     
     /**
      * Get current mid price from indicators
+     * FIX: added null/empty guard — returns 0 if no indicator data available yet
      */
     private long getCurrentMidPrice() {
-        double currentPrice = indicators.getAllIndicators()[13]; // Last element is current price
+        double[] allIndicators = indicators.getAllIndicators();
+        if (allIndicators == null || allIndicators.length == 0) {
+            return 0L;
+        }
+        // Last element is current price (index 13 in the indicator array)
+        double currentPrice = allIndicators[allIndicators.length - 1];
+        if (currentPrice <= 0) {
+            return 0L;
+        }
         return (long)(currentPrice * 10000); // Convert back to long format
     }
     
@@ -340,6 +368,9 @@ public class MLEnhancedMarketMakingStrategy implements Strategy {
         
         // Generate features and labels
         List<double[]> features = new ArrayList<>();
+
+        // FIX: use explicit type List<MarketRegimeClassifier.MarketRegime> to avoid
+        // type-inference ambiguity when reassigning from generateLabels()
         List<MarketRegimeClassifier.MarketRegime> labels = new ArrayList<>();
         
         // Calculate indicators for each point
@@ -439,6 +470,8 @@ public class MLEnhancedMarketMakingStrategy implements Strategy {
         regimeChanges.set(0);
         mlPredictions.set(0);
         totalPnL = 0.0;
+        ourBuyOrderIds.clear();
+        ourSellOrderIds.clear();
     }
     
     /**

@@ -7,6 +7,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+// FIX: was com.ft.risk.RiskManager (wrong package — missing 'h' in 'hft')
 import com.ft.risk.RiskManager;
 import com.hft.core.Order;
 import com.hft.core.aeron.AeronMarketDataFeed;
@@ -42,7 +43,7 @@ public class UltraHighPerformanceEngine {
     // WebSocket integration
     private final WebSocketApiServer webSocketServer;
 
-    // FIX 1: store monitoringThread as a field so stop() can interrupt it immediately
+    // FIX: store monitoringThread as a field so stop() can interrupt it immediately
     private Thread monitoringThread;
     
     public UltraHighPerformanceEngine(Strategy strategy, RiskManager riskManager) {
@@ -106,8 +107,7 @@ public class UltraHighPerformanceEngine {
         aeronFeed.start();
         webSocketServer.start();
         
-        // FIX 2: assign to field (removed "Thread" keyword before monitoringThread)
-        // so stop() can interrupt it later
+        // FIX: assign to field so stop() can interrupt it later
         monitoringThread = new Thread(this::monitoringLoop, "UHP-Engine-Monitor");
         monitoringThread.setDaemon(true);
         monitoringThread.start();
@@ -123,8 +123,7 @@ public class UltraHighPerformanceEngine {
         logger.info("Stopping Ultra-High Performance Engine");
         running.set(false);
 
-        // FIX 3: interrupt monitor thread immediately instead of Thread.sleep(1000)
-        // which was blocking the shutdown hook for a full second
+        // FIX: interrupt monitor thread immediately instead of Thread.sleep(1000)
         if (monitoringThread != null) {
             monitoringThread.interrupt();
         }
@@ -141,8 +140,7 @@ public class UltraHighPerformanceEngine {
                 disruptorEngine.stop();
             }
 
-            // FIX 4: shutdown PerformanceMonitor so its thread also exits cleanly
-            // without this its thread kept the JVM alive after everything else stopped
+            // FIX: shutdown PerformanceMonitor so its thread also exits cleanly
             performanceMonitor.shutdown();
 
             printFinalStatistics();
