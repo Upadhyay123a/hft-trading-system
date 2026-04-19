@@ -3,7 +3,7 @@ package com.hft.execution;
 import com.hft.core.Order;
 import com.hft.core.SymbolMapper;
 import com.hft.ml.RealTimeMLProcessor;
-import com.hft.ml.MarketRegimeClassifier;
+import com.hft.ml.MarketRegimeClassifier.MarketRegime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -428,7 +428,7 @@ public class AdvancedOrderTypes {
             RealTimeMLProcessor.MLPerformanceStats mlStats = mlProcessor.getPerformanceStats();
             double predictedPrice = mlStats.lastPrediction;
             double confidence = mlStats.lastConfidence;
-            MarketRegimeClassifier.MarketRegime currentRegime = mlStats.currentRegime;
+            MarketRegime currentRegime = mlStats.currentRegime;
             
             // Optimize slice size based on ML predictions
             double sliceSize = calculateOptimalSliceSize(predictedPrice, confidence, currentRegime);
@@ -449,7 +449,7 @@ public class AdvancedOrderTypes {
         }
         
         private double calculateOptimalSliceSize(double predictedPrice, double confidence, 
-                                                MarketRegimeClassifier.MarketRegime regime) {
+                                                MarketRegime regime) {
             double baseSlice = totalVolume * 0.01; // 1% base slice
             
             // Adjust based on regime
