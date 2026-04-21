@@ -17,79 +17,96 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class MarketMakingStrategy implements Strategy {
     private static final Logger logger = LoggerFactory.getLogger(MarketMakingStrategy.class);
-    
+
     private final int symbolId;
     private final long spreadTicks;     // Spread in price ticks (e.g., 10 = 0.001)
     private final int orderSize;        // Order quantity
     private final long maxPosition;     // Maximum position size
-    
+
     private final AtomicLong orderIdGenerator = new AtomicLong(1);
     private long currentPosition = 0;   // Positive = long, negative = short
     private double totalPnL = 0.0;
     private long lastQuoteTime = 0;
     private final long quoteIntervalNanos = 100_000_000; // 100ms between quotes
-    
+
     // Active orders
-    private Long activeBuyOrderId = null;
+    private Long activeBuyOrderId  = null;
     private Long activeSellOrderId = null;
-    
+
+    // FIX 2: Track when each active order was placed so we can expire stale ones.
+    // If a resting order is never filled (e.g. price moved away, no counterparty),
+    // activeBuyOrderId/activeSellOrderId would stay set forever and block new quotes.
+    private long activeBuyOrderTime  = 0;
+    private long activeSellOrderTime = 0;
+    private static final long STALE_ORDER_NANOS = 5_000_000_000L; // 5 seconds
+
     public MarketMakingStrategy(int symbolId, double spreadPercent, int orderSize, long maxPosition) {
-        this.symbolId = symbolId;
+        this.symbolId    = symbolId;
         this.spreadTicks = (long)(spreadPercent * 10000); // Convert percent to ticks
-        this.orderSize = orderSize;
+        this.orderSize   = orderSize;
         this.maxPosition = maxPosition;
     }
-    
+
     @Override
     public void initialize() {
         logger.info("Initialized Market Making Strategy for symbol {}", symbolId);
-        logger.info("Spread: {}%, Order Size: {}, Max Position: {}", 
+        logger.info("Spread: {}%, Order Size: {}, Max Position: {}",
             spreadTicks / 100.0, orderSize, maxPosition);
     }
-    
+
     @Override
     public List<Order> onTick(Tick tick, OrderBook orderBook) {
         List<Order> orders = new ArrayList<>();
-        
+
         // Only process ticks for our symbol
         if (tick.symbolId != symbolId) {
             return orders;
         }
-        
-        // Rate limit quoting
+
         long now = System.nanoTime();
+
+        // FIX 2: Expire stale active orders so quoting is never blocked permanently.
+        // An order is stale if it was placed more than STALE_ORDER_NANOS ago with no fill.
+        if (activeBuyOrderId != null && (now - activeBuyOrderTime) > STALE_ORDER_NANOS) {
+            logger.debug("MarketMaking: Expiring stale BUY order id={}", activeBuyOrderId);
+            activeBuyOrderId = null;
+        }
+        if (activeSellOrderId != null && (now - activeSellOrderTime) > STALE_ORDER_NANOS) {
+            logger.debug("MarketMaking: Expiring stale SELL order id={}", activeSellOrderId);
+            activeSellOrderId = null;
+        }
+
+        // Rate limit quoting
         if (now - lastQuoteTime < quoteIntervalNanos) {
             return orders;
         }
         lastQuoteTime = now;
-        
+
         // Get current market state
         long midPrice = 0;
         if (orderBook != null && orderBook.getMidPrice() > 0) {
-            // Use order book mid price if available
             midPrice = orderBook.getMidPrice();
         } else if (tick.price > 0) {
-            // Fall back to tick price if order book is empty
+            // Correct fallback: use last trade price when order book is empty
             midPrice = tick.price;
             logger.debug("Using tick price as mid price: {}", tick.price);
         }
-        
+
         if (midPrice == 0) {
             return orders; // No market data yet
         }
-        
+
         // Calculate quote prices
         long bidPrice = midPrice - spreadTicks / 2;
         long askPrice = midPrice + spreadTicks / 2;
-        
+
         // Check position limits
-        boolean canBuy = currentPosition < maxPosition;
+        boolean canBuy  = currentPosition < maxPosition;
         boolean canSell = currentPosition > -maxPosition;
-        
-        // Debug logging
-        logger.debug("MarketMaking: midPrice={}, bidPrice={}, askPrice={}, canBuy={}, canSell={}, activeBuy={}, activeSell={}", 
+
+        logger.debug("MarketMaking: midPrice={}, bid={}, ask={}, canBuy={}, canSell={}, activeBuy={}, activeSell={}",
                     midPrice, bidPrice, askPrice, canBuy, canSell, activeBuyOrderId, activeSellOrderId);
-        
+
         // Place buy order
         if (canBuy && activeBuyOrderId == null) {
             Order buyOrder = new Order(
@@ -97,18 +114,18 @@ public class MarketMakingStrategy implements Strategy {
                 symbolId,
                 bidPrice,
                 orderSize,
-                (byte)0, // Buy
-                (byte)0  // Limit
+                (byte) 0, // Buy
+                (byte) 0  // Limit
             );
             orders.add(buyOrder);
-            activeBuyOrderId = buyOrder.orderId;
-            logger.info("MarketMaking: Placed BUY order - ID={}, price={}, qty={}", 
+            activeBuyOrderId  = buyOrder.orderId;
+            activeBuyOrderTime = now; // FIX 2: record placement time
+            logger.info("MarketMaking: Placed BUY order - id={}, price={}, qty={}",
                        buyOrder.orderId, bidPrice, orderSize);
         } else {
-            logger.debug("MarketMaking: Not placing BUY order - canBuy={}, activeBuyId={}", 
-                        canBuy, activeBuyOrderId);
+            logger.debug("MarketMaking: Skipping BUY - canBuy={}, activeBuyId={}", canBuy, activeBuyOrderId);
         }
-        
+
         // Place sell order
         if (canSell && activeSellOrderId == null) {
             Order sellOrder = new Order(
@@ -116,75 +133,76 @@ public class MarketMakingStrategy implements Strategy {
                 symbolId,
                 askPrice,
                 orderSize,
-                (byte)1, // Sell
-                (byte)0  // Limit
+                (byte) 1, // Sell
+                (byte) 0  // Limit
             );
             orders.add(sellOrder);
-            activeSellOrderId = sellOrder.orderId;
-            logger.info("MarketMaking: Placed SELL order - ID={}, price={}, qty={}", 
+            activeSellOrderId  = sellOrder.orderId;
+            activeSellOrderTime = now; // FIX 2: record placement time
+            logger.info("MarketMaking: Placed SELL order - id={}, price={}, qty={}",
                        sellOrder.orderId, askPrice, orderSize);
         } else {
-            logger.debug("MarketMaking: Not placing SELL order - canSell={}, activeSellId={}", 
-                        canSell, activeSellOrderId);
+            logger.debug("MarketMaking: Skipping SELL - canSell={}, activeSellId={}", canSell, activeSellOrderId);
         }
-        
+
         logger.debug("MarketMaking: Returning {} orders", orders.size());
         return orders;
     }
-    
+
     @Override
     public void onTrade(Trade trade) {
-        // Update position
-        if (trade.buyOrderId == activeBuyOrderId) {
-            currentPosition += trade.quantity;
-            activeBuyOrderId = null; // Can place new order
-            logger.debug("Buy filled: qty={}, pos={}", trade.quantity, currentPosition);
-        }
-        
-        if (trade.sellOrderId == activeSellOrderId) {
-            currentPosition -= trade.quantity;
-            activeSellOrderId = null; // Can place new order
-            logger.debug("Sell filled: qty={}, pos={}", trade.quantity, currentPosition);
-        }
-        
-        // Calculate realized P&L (simplified)
-        double tradeValue = trade.getPriceAsDouble() * trade.quantity;
-        
-        // Check if this was our buy order that got filled
-        boolean wasOurBuy = (activeBuyOrderId != null && trade.buyOrderId == activeBuyOrderId);
+        // FIX 1: Capture whether this trade matches our active orders BEFORE nulling them.
+        // Original code nulled activeBuyOrderId first, then checked (activeBuyOrderId != null)
+        // — that check was always false, so totalPnL was NEVER updated. getPnL() returned 0 always.
+        boolean wasOurBuy  = (activeBuyOrderId  != null && trade.buyOrderId  == activeBuyOrderId);
         boolean wasOurSell = (activeSellOrderId != null && trade.sellOrderId == activeSellOrderId);
-        
+
+        // Now safe to update position and clear active order slots
         if (wasOurBuy) {
-            // We bought - reduce P&L (we paid money)
-            totalPnL -= tradeValue;
-            logger.debug("Buy trade: price={}, qty={}, value={}, pnl={}", 
+            currentPosition += trade.quantity;
+            activeBuyOrderId = null;
+            logger.debug("Buy filled: qty={}, newPos={}", trade.quantity, currentPosition);
+        }
+        if (wasOurSell) {
+            currentPosition -= trade.quantity;
+            activeSellOrderId = null;
+            logger.debug("Sell filled: qty={}, newPos={}", trade.quantity, currentPosition);
+        }
+
+        // Update P&L — now correctly reachable since wasOurBuy/wasOurSell are evaluated first
+        double tradeValue = trade.getPriceAsDouble() * trade.quantity;
+
+        if (wasOurBuy) {
+            totalPnL -= tradeValue; // We paid for the position
+            logger.debug("Buy trade PnL update: price={}, qty={}, cost={}, totalPnL={}",
                         trade.getPriceAsDouble(), trade.quantity, tradeValue, totalPnL);
         } else if (wasOurSell) {
-            // We sold - increase P&L (we received money)
-            totalPnL += tradeValue;
-            logger.debug("Sell trade: price={}, qty={}, value={}, pnl={}", 
+            totalPnL += tradeValue; // We received cash for the position
+            logger.debug("Sell trade PnL update: price={}, qty={}, revenue={}, totalPnL={}",
                         trade.getPriceAsDouble(), trade.quantity, tradeValue, totalPnL);
         }
     }
-    
+
     @Override
     public String getName() {
         return "MarketMaking";
     }
-    
+
     @Override
     public double getPnL() {
         return totalPnL;
     }
-    
+
     @Override
     public void reset() {
-        currentPosition = 0;
-        totalPnL = 0.0;
-        activeBuyOrderId = null;
-        activeSellOrderId = null;
+        currentPosition    = 0;
+        totalPnL           = 0.0;
+        activeBuyOrderId   = null;
+        activeSellOrderId  = null;
+        activeBuyOrderTime  = 0;
+        activeSellOrderTime = 0;
     }
-    
+
     public long getCurrentPosition() {
         return currentPosition;
     }
