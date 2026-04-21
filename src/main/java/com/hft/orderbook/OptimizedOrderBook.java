@@ -10,52 +10,32 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
-/**
- * Professional O(1) Order Book Implementation
- * Based on Citadel/HRT array-based price level optimization
- * 
- * Key Features:
- * - O(1) price level access via direct array indexing
- * - Cache-friendly memory layout for better CPU performance
- * - Fixed price granularity for predictable behavior
- * - Lock-free operations where possible
- */
 public class OptimizedOrderBook {
     private static final Logger logger = LoggerFactory.getLogger(OptimizedOrderBook.class);
     
-    // Price grid configuration - Citadel/HRT approach
-    private static final long BASE_PRICE = 100000000L; // $10,000 base
-    private static final long MAX_PRICE = 250000000L;  // $25,000 max
-    private static final long MIN_PRICE = 50000L;     // $50 min
-    private static final int PRICE_TICK = 100;        // $0.01 granularity
+    private static final long BASE_PRICE = 100000000L;
+    private static final long MAX_PRICE = 250000000L;
+    private static final long MIN_PRICE = 50000L;
+    private static final int PRICE_TICK = 100;
     private static final int PRICE_LEVELS = (int)(((MAX_PRICE - MIN_PRICE) / PRICE_TICK) + 1);
     
-    // Array-based price levels - O(1) access
     private final PriceLevel[] bidLevels = new PriceLevel[PRICE_LEVELS];
     private final PriceLevel[] askLevels = new PriceLevel[PRICE_LEVELS];
-    
-    // Fast order lookup
     private final HashMap<Long, Order> orderMap = new HashMap<>();
     
-    // Market state
     private long bestBid = 0;
     private long bestAsk = Long.MAX_VALUE;
     private final int symbolId;
     
-    // Performance tracking
     private final AtomicLong orderCount = new AtomicLong(0);
     private final AtomicLong tradeCount = new AtomicLong(0);
     
     public OptimizedOrderBook(int symbolId) {
         this.symbolId = symbolId;
         initializePriceLevels();
-        logger.info("OptimizedOrderBook initialized for symbol {} with {} price levels", 
-            symbolId, PRICE_LEVELS);
+        logger.info("OptimizedOrderBook initialized for symbol {} with {} price levels", symbolId, PRICE_LEVELS);
     }
     
-    /**
-     * Initialize all price levels - O(n) once at startup
-     */
     private void initializePriceLevels() {
         for (int i = 0; i < PRICE_LEVELS; i++) {
             bidLevels[i] = new PriceLevel();
@@ -63,26 +43,15 @@ public class OptimizedOrderBook {
         }
     }
     
-    /**
-     * Convert price to array index - O(1) calculation
-     */
     private int priceToIndex(long price) {
-        if (price < MIN_PRICE || price > MAX_PRICE) {
-            return -1; // Out of range
-        }
+        if (price < MIN_PRICE || price > MAX_PRICE) return -1;
         return (int)((price - MIN_PRICE) / PRICE_TICK);
     }
     
-    /**
-     * Convert index back to price - O(1) calculation
-     */
     private long indexToPrice(int index) {
-        return MIN_PRICE + (index * PRICE_TICK);
+        return MIN_PRICE + ((long)index * PRICE_TICK);
     }
     
-    /**
-     * Add order with immediate matching - O(1) + O(k) where k is matches
-     */
     public List<Trade> addOrder(Order order) {
         List<Trade> trades = new ArrayList<>();
         
@@ -92,359 +61,199 @@ public class OptimizedOrderBook {
             return trades;
         }
         
-        // CRITICAL FIX: Check for immediate matching before adding to book
         if (order.isBuy()) {
-            // Buy order - check if it crosses best ask
             if (bestAsk != Long.MAX_VALUE && order.price >= bestAsk) {
                 trades = executeLimitBuy(order);
-                if (order.getRemainingQuantity() == 0) {
-                    // Fully filled, don't add to book
-                    return trades;
-                }
+                if (order.getRemainingQuantity() == 0) return trades;
             }
         } else {
-            // Sell order - check if it crosses best bid  
             if (bestBid != 0 && order.price <= bestBid) {
                 trades = executeLimitSell(order);
-                if (order.getRemainingQuantity() == 0) {
-                    // Fully filled, don't add to book
-                    return trades;
-                }
+                if (order.getRemainingQuantity() == 0) return trades;
             }
         }
         
-        // Add remaining quantity to appropriate price level
         if (order.getRemainingQuantity() > 0) {
             PriceLevel level = order.isBuy() ? bidLevels[index] : askLevels[index];
             level.addOrder(order);
-            
-            // Update order map
             orderMap.put(order.orderId, order);
-            
-            // Update best bid/ask - O(1) comparison
             updateBestPrices(order);
-            
             orderCount.incrementAndGet();
         }
         
         return trades;
     }
     
-    /**
-     * Cancel order - O(1) operation
-     */
     public boolean cancelOrder(long orderId) {
         Order order = orderMap.get(orderId);
-        if (order == null) {
-            return false;
-        }
+        if (order == null) return false;
         
         int index = priceToIndex(order.price);
-        if (index == -1) {
-            return false;
-        }
+        if (index == -1) return false;
         
-        // Remove from price level
         PriceLevel level = order.isBuy() ? bidLevels[index] : askLevels[index];
         level.removeOrder(order);
-        
-        // Remove from order map
         orderMap.remove(orderId);
-        
-        // Update best bid/ask if needed
         updateBestPricesAfterCancel(order);
-        
         return true;
     }
     
-    /**
-     * Get mid price - O(1) operation
-     */
     public long getMidPrice() {
-        if (bestBid == 0 || bestAsk == Long.MAX_VALUE) {
-            return 0; // No market
-        }
+        if (bestBid == 0 || bestAsk == Long.MAX_VALUE) return 0;
         return (bestBid + bestAsk) / 2;
     }
     
-    /**
-     * Get spread - O(1) operation
-     */
     public long getSpread() {
-        if (bestBid == 0 || bestAsk == Long.MAX_VALUE) {
-            return 0;
-        }
+        if (bestBid == 0 || bestAsk == Long.MAX_VALUE) return 0;
         return bestAsk - bestBid;
     }
     
-    /**
-     * Get best bid price - O(1) operation
-     */
-    public long getBestBid() {
-        return bestBid;
-    }
+    public long getBestBid() { return bestBid; }
+    public long getBestAsk() { return bestAsk == Long.MAX_VALUE ? 0 : bestAsk; }
     
-    /**
-     * Get best ask price - O(1) operation
-     */
-    public long getBestAsk() {
-        return bestAsk == Long.MAX_VALUE ? 0 : bestAsk;
-    }
-    
-    /**
-     * Market order execution - O(k) where k is price levels to consume
-     */
     public List<Trade> executeMarketOrder(Order marketOrder) {
-        List<Trade> trades = new ArrayList<>();
-        
-        if (marketOrder.isBuy()) {
-            // Buy market order - consume asks
-            trades = executeMarketBuy(marketOrder);
-        } else {
-            // Sell market order - consume bids
-            trades = executeMarketSell(marketOrder);
-        }
-        
-        return trades;
+        return marketOrder.isBuy() ? executeMarketBuy(marketOrder) : executeMarketSell(marketOrder);
     }
     
-    /**
-     * Execute market buy order
-     */
     private List<Trade> executeMarketBuy(Order marketOrder) {
         List<Trade> trades = new ArrayList<>();
-        long remainingQuantity = marketOrder.quantity;
-        long executionPrice = bestAsk;
+        if (bestAsk == Long.MAX_VALUE) return trades;
         
-        // Consume from best ask upwards
-        for (int i = priceToIndex(bestAsk); i < PRICE_LEVELS && remainingQuantity > 0; i++) {
+        for (int i = priceToIndex(bestAsk); i < PRICE_LEVELS && marketOrder.getRemainingQuantity() > 0; i++) {
             PriceLevel level = askLevels[i];
             if (level.getTotalQuantity() == 0) continue;
             
-            long availableQuantity = Math.min(remainingQuantity, level.getTotalQuantity());
-            
-            // Create trades with orders at this level
             List<Order> ordersAtLevel = new ArrayList<>(level.getOrders());
             for (Order order : ordersAtLevel) {
-                if (remainingQuantity <= 0) break;
-                
-                long tradeQuantity = Math.min(availableQuantity, order.getRemainingQuantity());
+                if (marketOrder.getRemainingQuantity() <= 0) break;
+                long tradeQuantity = Math.min(marketOrder.getRemainingQuantity(), order.getRemainingQuantity());
                 if (tradeQuantity > 0) {
-                    Trade trade = createTrade(order, marketOrder, tradeQuantity, indexToPrice(i));
-                    trades.add(trade);
-                    
-                    // Update order
+                    trades.add(createTrade(order, marketOrder, tradeQuantity, indexToPrice(i)));
                     order.fill(tradeQuantity);
-                    remainingQuantity -= tradeQuantity;
-                    
-                    // Remove from order map if fully filled
-                    if (order.getRemainingQuantity() == 0) {
-                        orderMap.remove(order.orderId);
-                    }
+                    marketOrder.fill(tradeQuantity);
+                    if (order.getRemainingQuantity() == 0) orderMap.remove(order.orderId);
                 }
             }
-            
-            // Clear empty orders from level
             level.removeEmptyOrders();
         }
-        
-        // Update best ask
         updateBestAsk();
-        
         return trades;
     }
     
-    /**
-     * Execute limit buy order - matches against ask levels
-     */
     private List<Trade> executeLimitBuy(Order limitOrder) {
         List<Trade> trades = new ArrayList<>();
-        long remainingQuantity = limitOrder.getRemainingQuantity();
         
-        // Consume from best ask upwards until order price limit
-        for (int i = priceToIndex(bestAsk); i < PRICE_LEVELS && remainingQuantity > 0; i++) {
+        for (int i = priceToIndex(bestAsk); i < PRICE_LEVELS && limitOrder.getRemainingQuantity() > 0; i++) {
             long currentPrice = indexToPrice(i);
-            if (currentPrice > limitOrder.price) break; // Price too high for limit order
+            if (currentPrice > limitOrder.price) break;
             
             PriceLevel level = askLevels[i];
             if (level.getTotalQuantity() == 0) continue;
             
             List<Order> ordersAtLevel = new ArrayList<>(level.getOrders());
             for (Order order : ordersAtLevel) {
-                if (remainingQuantity <= 0) break;
-                
-                long tradeQuantity = Math.min(remainingQuantity, order.getRemainingQuantity());
+                if (limitOrder.getRemainingQuantity() <= 0) break;
+                long tradeQuantity = Math.min(limitOrder.getRemainingQuantity(), order.getRemainingQuantity());
                 if (tradeQuantity > 0) {
-                    Trade trade = createTrade(order, limitOrder, tradeQuantity, currentPrice);
-                    trades.add(trade);
-                    
-                    // Update orders
+                    trades.add(createTrade(order, limitOrder, tradeQuantity, currentPrice));
                     order.fill(tradeQuantity);
                     limitOrder.fill(tradeQuantity);
-                    remainingQuantity -= tradeQuantity;
-                    
-                    // Remove from order map if fully filled
-                    if (order.getRemainingQuantity() == 0) {
-                        orderMap.remove(order.orderId);
-                    }
+                    if (order.getRemainingQuantity() == 0) orderMap.remove(order.orderId);
                 }
             }
-            
-            // Clear empty orders from level
             level.removeEmptyOrders();
         }
-        
-        // Update best ask
         updateBestAsk();
-        
         return trades;
     }
     
-    /**
-     * Execute limit sell order - matches against bid levels
-     */
     private List<Trade> executeLimitSell(Order limitOrder) {
         List<Trade> trades = new ArrayList<>();
-        long remainingQuantity = limitOrder.getRemainingQuantity();
         
-        // Consume from best bid downwards until order price limit
-        for (int i = priceToIndex(bestBid); i >= 0 && remainingQuantity > 0; i--) {
+        for (int i = priceToIndex(bestBid); i >= 0 && limitOrder.getRemainingQuantity() > 0; i--) {
             long currentPrice = indexToPrice(i);
-            if (currentPrice < limitOrder.price) break; // Price too low for limit order
+            if (currentPrice < limitOrder.price) break;
             
             PriceLevel level = bidLevels[i];
             if (level.getTotalQuantity() == 0) continue;
             
             List<Order> ordersAtLevel = new ArrayList<>(level.getOrders());
             for (Order order : ordersAtLevel) {
-                if (remainingQuantity <= 0) break;
-                
-                long tradeQuantity = Math.min(remainingQuantity, order.getRemainingQuantity());
+                if (limitOrder.getRemainingQuantity() <= 0) break;
+                long tradeQuantity = Math.min(limitOrder.getRemainingQuantity(), order.getRemainingQuantity());
                 if (tradeQuantity > 0) {
-                    Trade trade = createTrade(order, limitOrder, tradeQuantity, currentPrice);
-                    trades.add(trade);
-                    
-                    // Update orders
+                    trades.add(createTrade(order, limitOrder, tradeQuantity, currentPrice));
                     order.fill(tradeQuantity);
                     limitOrder.fill(tradeQuantity);
-                    remainingQuantity -= tradeQuantity;
-                    
-                    // Remove from order map if fully filled
-                    if (order.getRemainingQuantity() == 0) {
-                        orderMap.remove(order.orderId);
-                    }
+                    if (order.getRemainingQuantity() == 0) orderMap.remove(order.orderId);
                 }
             }
-            
-            // Clear empty orders from level
             level.removeEmptyOrders();
         }
-        
-        // Update best bid
         updateBestBid();
-        
         return trades;
     }
     
-    /**
-     * Execute market sell order
-     */
     private List<Trade> executeMarketSell(Order marketOrder) {
         List<Trade> trades = new ArrayList<>();
-        long remainingQuantity = marketOrder.quantity;
-        long executionPrice = bestBid;
+        if (bestBid == 0) return trades;
         
-        // Consume from best bid downwards
-        for (int i = priceToIndex(bestBid); i >= 0 && remainingQuantity > 0; i--) {
+        for (int i = priceToIndex(bestBid); i >= 0 && marketOrder.getRemainingQuantity() > 0; i--) {
             PriceLevel level = bidLevels[i];
             if (level.getTotalQuantity() == 0) continue;
             
-            long availableQuantity = Math.min(remainingQuantity, level.getTotalQuantity());
-            
-            // Create trades with orders at this level
             List<Order> ordersAtLevel = new ArrayList<>(level.getOrders());
             for (Order order : ordersAtLevel) {
-                if (remainingQuantity <= 0) break;
-                
-                long tradeQuantity = Math.min(availableQuantity, order.getRemainingQuantity());
+                if (marketOrder.getRemainingQuantity() <= 0) break;
+                long tradeQuantity = Math.min(marketOrder.getRemainingQuantity(), order.getRemainingQuantity());
                 if (tradeQuantity > 0) {
-                    Trade trade = createTrade(order, marketOrder, tradeQuantity, indexToPrice(i));
-                    trades.add(trade);
-                    
-                    // Update order
+                    trades.add(createTrade(order, marketOrder, tradeQuantity, indexToPrice(i)));
                     order.fill(tradeQuantity);
-                    remainingQuantity -= tradeQuantity;
-                    
-                    // Remove from order map if fully filled
-                    if (order.getRemainingQuantity() == 0) {
-                        orderMap.remove(order.orderId);
-                    }
+                    marketOrder.fill(tradeQuantity);
+                    if (order.getRemainingQuantity() == 0) orderMap.remove(order.orderId);
                 }
             }
-            
-            // Clear empty orders from level
             level.removeEmptyOrders();
         }
-        
-        // Update best bid
         updateBestBid();
-        
         return trades;
     }
     
-    /**
-     * Create trade object
-     */
-    private Trade createTrade(Order restingOrder, Order marketOrder, long quantity, long price) {
+    private Trade createTrade(Order restingOrder, Order aggressorOrder, long quantity, long price) {
         Trade trade = new Trade();
         trade.tradeId = tradeCount.incrementAndGet();
         trade.symbolId = symbolId;
         trade.price = price;
         trade.quantity = (int) quantity;
-        
-        if (marketOrder.isBuy()) {
-            trade.buyOrderId = marketOrder.orderId;
+        if (aggressorOrder.isBuy()) {
+            trade.buyOrderId = aggressorOrder.orderId;
             trade.sellOrderId = restingOrder.orderId;
         } else {
             trade.buyOrderId = restingOrder.orderId;
-            trade.sellOrderId = marketOrder.orderId;
+            trade.sellOrderId = aggressorOrder.orderId;
         }
-        
         return trade;
     }
     
-    /**
-     * Update best prices after adding order
-     */
     private void updateBestPrices(Order order) {
         if (order.isBuy()) {
-            if (order.price > bestBid) {
-                bestBid = order.price;
-            }
+            if (order.price > bestBid) bestBid = order.price;
         } else {
-            if (order.price < bestAsk) {
-                bestAsk = order.price;
-            }
+            if (order.price < bestAsk) bestAsk = order.price;
         }
     }
     
-    /**
-     * Update best prices after cancel
-     */
     private void updateBestPricesAfterCancel(Order cancelledOrder) {
-        if (cancelledOrder.isBuy() && cancelledOrder.price == bestBid) {
-            updateBestBid();
-        } else if (!cancelledOrder.isBuy() && cancelledOrder.price == bestAsk) {
-            updateBestAsk();
-        }
+        if (cancelledOrder.isBuy() && cancelledOrder.price == bestBid) updateBestBid();
+        else if (!cancelledOrder.isBuy() && cancelledOrder.price == bestAsk) updateBestAsk();
     }
     
-    /**
-     * Update best bid - O(k) where k is empty levels
-     */
+    // BUG FIX: capture startIdx BEFORE resetting bestBid to 0.
+    // Old code: bestBid=0 first, then priceToIndex(bestBid)==priceToIndex(0)==-1 → loop never ran.
     private void updateBestBid() {
+        int startIdx = (bestBid > 0) ? priceToIndex(bestBid) : (PRICE_LEVELS - 1);
         bestBid = 0;
-        for (int i = priceToIndex(bestBid); i >= 0; i--) {
+        for (int i = startIdx; i >= 0; i--) {
             if (bidLevels[i].getTotalQuantity() > 0) {
                 bestBid = indexToPrice(i);
                 break;
@@ -452,12 +261,12 @@ public class OptimizedOrderBook {
         }
     }
     
-    /**
-     * Update best ask - O(k) where k is empty levels
-     */
+    // BUG FIX: capture startIdx BEFORE resetting bestAsk to Long.MAX_VALUE.
+    // Old code: bestAsk=MAX_VALUE first, then priceToIndex(MAX_VALUE)==-1 → loop never ran.
     private void updateBestAsk() {
+        int startIdx = (bestAsk != Long.MAX_VALUE) ? priceToIndex(bestAsk) : 0;
         bestAsk = Long.MAX_VALUE;
-        for (int i = priceToIndex(bestAsk); i < PRICE_LEVELS; i++) {
+        for (int i = startIdx; i < PRICE_LEVELS; i++) {
             if (askLevels[i].getTotalQuantity() > 0) {
                 bestAsk = indexToPrice(i);
                 break;
@@ -465,69 +274,39 @@ public class OptimizedOrderBook {
         }
     }
     
-    /**
-     * Get order book state for debugging
-     */
     public String getBookState() {
         StringBuilder sb = new StringBuilder();
         sb.append("=== Optimized Order Book: ").append(symbolId).append(" ===\n");
         
+        int askStart = (bestAsk != Long.MAX_VALUE) ? priceToIndex(bestAsk) : 0;
         sb.append("ASKS:\n");
-        for (int i = priceToIndex(bestAsk); i < Math.min(priceToIndex(bestAsk) + 10, PRICE_LEVELS); i++) {
-            if (askLevels[i].getTotalQuantity() > 0) {
-                sb.append(String.format("Price: %.4f, Qty: %d\n", 
-                    indexToPrice(i) / 10000.0, askLevels[i].getTotalQuantity()));
-            }
+        for (int i = askStart; i < Math.min(askStart + 10, PRICE_LEVELS); i++) {
+            if (i >= 0 && askLevels[i].getTotalQuantity() > 0)
+                sb.append(String.format("Price: %.4f, Qty: %d\n", indexToPrice(i) / 10000.0, askLevels[i].getTotalQuantity()));
         }
         
         sb.append(String.format("Spread: %.4f\n", getSpread() / 10000.0));
         
+        int bidStart = (bestBid > 0) ? priceToIndex(bestBid) : 0;
         sb.append("BIDS:\n");
-        for (int i = priceToIndex(bestBid); i >= Math.max(priceToIndex(bestBid) - 10, 0); i--) {
-            if (bidLevels[i].getTotalQuantity() > 0) {
-                sb.append(String.format("Price: %.4f, Qty: %d\n", 
-                    indexToPrice(i) / 10000.0, bidLevels[i].getTotalQuantity()));
-            }
+        for (int i = bidStart; i >= Math.max(bidStart - 10, 0); i--) {
+            if (bidLevels[i].getTotalQuantity() > 0)
+                sb.append(String.format("Price: %.4f, Qty: %d\n", indexToPrice(i) / 10000.0, bidLevels[i].getTotalQuantity()));
         }
         
         return sb.toString();
     }
     
-    /**
-     * Performance metrics
-     */
-    public long getOrderCount() {
-        return orderCount.get();
-    }
+    public long getOrderCount() { return orderCount.get(); }
+    public long getTradeCount() { return tradeCount.get(); }
     
-    public long getTradeCount() {
-        return tradeCount.get();
-    }
-    
-    /**
-     * Price level inner class
-     */
     private static class PriceLevel {
         private final List<Order> orders = new ArrayList<>();
         
-        public void addOrder(Order order) {
-            orders.add(order);
-        }
-        
-        public void removeOrder(Order order) {
-            orders.remove(order);
-        }
-        
-        public void removeEmptyOrders() {
-            orders.removeIf(order -> order.getRemainingQuantity() == 0);
-        }
-        
-        public List<Order> getOrders() {
-            return new ArrayList<>(orders);
-        }
-        
-        public long getTotalQuantity() {
-            return orders.stream().mapToLong(Order::getRemainingQuantity).sum();
-        }
+        public void addOrder(Order order)    { orders.add(order); }
+        public void removeOrder(Order order) { orders.remove(order); }
+        public void removeEmptyOrders()      { orders.removeIf(o -> o.getRemainingQuantity() == 0); }
+        public List<Order> getOrders()       { return new ArrayList<>(orders); }
+        public long getTotalQuantity()       { return orders.stream().mapToLong(Order::getRemainingQuantity).sum(); }
     }
 }
