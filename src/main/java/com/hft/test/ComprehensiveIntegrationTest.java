@@ -839,7 +839,9 @@ public class ComprehensiveIntegrationTest {
             logger.info("   Testing Disruptor engine...");
             long startTime = System.nanoTime();
             
-            DisruptorEngine disruptor = new DisruptorEngine(strategies.get(0), riskManager);
+            // Create engine instance for Disruptor (bypassing the module access issue for this test)
+            UltraHighPerformanceEngine engine = new UltraHighPerformanceEngine(strategies.get(0), riskManager);
+            DisruptorEngine disruptor = new DisruptorEngine(strategies.get(0), riskManager, engine);
             
             // Test message throughput
             AtomicInteger messageCount = new AtomicInteger(0);
@@ -869,12 +871,13 @@ public class ComprehensiveIntegrationTest {
             result.addMetric("Aeron throughput", 500000.0 / (aeronTime / 1e9), "ticks/sec");
             
             // Test latency - using processing statistics as proxy
-            long ticksProcessed = performanceEngine.getTicksProcessed();
-            long ordersProcessed = performanceEngine.getOrdersProcessed();
-            double avgLatency = (double) ticksProcessed / ordersProcessed; // Simple ratio as proxy
+            long ticksProcessed = engine.getTicksProcessed();
+            long ordersProcessed = engine.getOrdersProcessed();
+            double avgLatency = ordersProcessed > 0 ? (double) ticksProcessed / ordersProcessed : 0.0; // Simple ratio as proxy
             result.addMetric("Engine latency", avgLatency, "μs");
             
             disruptor.stop();
+            engine.stop();
             
             result.setSuccess(true);
             testResults.put("High-Performance Messaging", result);
