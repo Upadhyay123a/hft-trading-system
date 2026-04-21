@@ -841,7 +841,7 @@ public class ComprehensiveIntegrationTest {
             
             // Create engine instance for Disruptor (bypassing the module access issue for this test)
             UltraHighPerformanceEngine engine = new UltraHighPerformanceEngine(strategies.get(0), riskManager);
-            DisruptorEngine disruptor = new DisruptorEngine(strategies.get(0), riskManager, engine);
+            DisruptorEngine disruptor = engine.getDisruptorEngine();
             
             // Test message throughput
             AtomicInteger messageCount = new AtomicInteger(0);

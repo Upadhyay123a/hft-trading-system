@@ -507,4 +507,21 @@ public class UltraHighPerformanceEngine {
             this.webSocketEnabled = webSocketEnabled;
         }
     }
+    
+    // Getters for component access
+    public DisruptorEngine getDisruptorEngine() {
+        return disruptorEngine;
+    }
+    
+    public AeronMarketDataFeed getAeronFeed() {
+        return aeronFeed;
+    }
+    
+    public FixProtocolHandler getFixHandler() {
+        return fixHandler;
+    }
+    
+    public WebSocketApiServer getWebSocketServer() {
+        return webSocketServer;
+    }
 }
