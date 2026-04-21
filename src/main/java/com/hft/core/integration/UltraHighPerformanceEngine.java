@@ -226,6 +226,14 @@ public class UltraHighPerformanceEngine {
     }
     
     /**
+     * Increment orders processed counter — called by DisruptorEngine when an order is processed.
+     * Keeps the engine-level stat in sync with what the Disruptor actually processed.
+     */
+    public void onOrderProcessed() {
+        ordersProcessed.incrementAndGet();
+    }
+    
+    /**
      * Handle FIX message
      */
     private void handleFixMessage(byte[] fixData) {

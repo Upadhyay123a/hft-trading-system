@@ -286,6 +286,11 @@ public class DisruptorEngine {
                     return;
                 }
 
+                // Notify main engine of order processing to keep counters synchronized
+                if (engine != null) {
+                    engine.onOrderProcessed();
+                }
+
                 // FIX: removed engine.processOrderUpdate(order) call here.
                 // That call republished the order back into this same Disruptor ring buffer,
                 // creating an infinite feedback loop. Orders originating from external
