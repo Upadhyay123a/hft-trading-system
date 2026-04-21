@@ -49,32 +49,31 @@ public class OrderBook {
     }
     
     /**
-     * Execute limit order - match or add to book
+     * Core matching loop — shared by limit, IOC, FOK, and market orders.
+     * Matches `order` against `oppositeSide` respecting `priceLimit`:
+     *   buy  orders: match while best ask <= priceLimit (pass Long.MAX_VALUE for market)
+     *   sell orders: match while best bid >= priceLimit (pass Long.MIN_VALUE for market)
      */
-    private List<Trade> executeLimitOrder(Order order) {
+    private List<Trade> matchAgainst(Order order, TreeMap<Long, PriceLevel> oppositeSide, long priceLimit) {
         List<Trade> trades = new ArrayList<>();
-        
-        // Try to match against existing orders
-        TreeMap<Long, PriceLevel> oppositeSide = order.isBuy() ? asks : bids;
-        
+
         while (order.getRemainingQuantity() > 0 && !oppositeSide.isEmpty()) {
-            Map.Entry<Long, PriceLevel> bestLevel = oppositeSide.firstEntry();
-            
-            // Check if price crosses
-            if (order.isBuy() && order.price < bestLevel.getKey()) break;
-            if (order.isSell() && order.price > bestLevel.getKey()) break;
-            
-            // Match orders
-            PriceLevel level = bestLevel.getValue();
+            Map.Entry<Long, PriceLevel> bestEntry = oppositeSide.firstEntry();
+
+            // Price boundary check
+            if (order.isBuy()  && bestEntry.getKey() > priceLimit) break;
+            if (order.isSell() && bestEntry.getKey() < priceLimit) break;
+
+            PriceLevel level = bestEntry.getValue();
             Order oppositeOrder = level.orders.peek();
-            
+
             if (oppositeOrder == null) {
-                oppositeSide.remove(bestLevel.getKey());
+                oppositeSide.remove(bestEntry.getKey());
                 continue;
             }
-            
+
             int matchQty = Math.min(order.getRemainingQuantity(), oppositeOrder.getRemainingQuantity());
-            
+
             // Create trade
             Trade trade = new Trade(
                 tradeIdGenerator.getAndIncrement(),
@@ -85,42 +84,52 @@ public class OrderBook {
                 matchQty
             );
             trades.add(trade);
-            
-            // Update orders
-            order.filledQuantity += matchQty;
-            oppositeOrder.filledQuantity += matchQty;
-            
+
+            // FIX 1: use Order.fill() instead of manually mutating filledQuantity.
+            // fill() caps filledQuantity at quantity and sets status (PartialFill /
+            // Filled) atomically, preventing filledQuantity ever exceeding quantity
+            // and keeping all status transitions in one place.
+            order.fill(matchQty);
+            oppositeOrder.fill(matchQty);
+
             lastTradePrice = oppositeOrder.price;
             lastTradeQuantity = matchQty;
-            
-            // Remove fully filled order
+
+            // FIX 2: decrement totalQuantity by matchQty on every match.
+            // Previously this only ran inside the "fully filled" block and used
+            // oppositeOrder.quantity — partial fills left totalQuantity stale,
+            // breaking depth queries and FOK availability checks.
+            level.totalQuantity -= matchQty;
+
             if (oppositeOrder.getRemainingQuantity() == 0) {
                 level.orders.poll();
-                level.totalQuantity -= oppositeOrder.quantity;
-                oppositeOrder.status = 2; // Filled
-                
+                orders.remove(oppositeOrder.orderId); // keep lookup map in sync
                 if (level.orders.isEmpty()) {
-                    oppositeSide.remove(bestLevel.getKey());
+                    oppositeSide.remove(bestEntry.getKey());
                 }
             }
         }
-        
-        // Add remaining to book
+
+        return trades;
+    }
+
+    /**
+     * Execute limit order - match or add to book
+     */
+    private List<Trade> executeLimitOrder(Order order) {
+        TreeMap<Long, PriceLevel> oppositeSide = order.isBuy() ? asks : bids;
+        List<Trade> trades = matchAgainst(order, oppositeSide, order.price);
+
+        // Add unfilled remainder to the resting book
         if (order.getRemainingQuantity() > 0) {
             orders.put(order.orderId, order);
             TreeMap<Long, PriceLevel> side = order.isBuy() ? bids : asks;
-            
             PriceLevel level = side.computeIfAbsent(order.price, k -> new PriceLevel(order.price));
             level.orders.add(order);
             level.totalQuantity += order.getRemainingQuantity();
-            
-            if (order.filledQuantity > 0) {
-                order.status = 1; // Partial fill
-            }
-        } else {
-            order.status = 2; // Filled
+            // status already set correctly by fill() — no manual override needed
         }
-        
+
         return trades;
     }
     
@@ -128,46 +137,15 @@ public class OrderBook {
      * Execute market order - match at any price
      */
     private List<Trade> executeMarketOrder(Order order) {
-        List<Trade> trades = new ArrayList<>();
         TreeMap<Long, PriceLevel> oppositeSide = order.isBuy() ? asks : bids;
-        
-        while (order.getRemainingQuantity() > 0 && !oppositeSide.isEmpty()) {
-            Map.Entry<Long, PriceLevel> bestLevel = oppositeSide.firstEntry();
-            PriceLevel level = bestLevel.getValue();
-            Order oppositeOrder = level.orders.peek();
-            
-            if (oppositeOrder == null) {
-                oppositeSide.remove(bestLevel.getKey());
-                continue;
-            }
-            
-            int matchQty = Math.min(order.getRemainingQuantity(), oppositeOrder.getRemainingQuantity());
-            
-            Trade trade = new Trade(
-                tradeIdGenerator.getAndIncrement(),
-                order.isBuy() ? order.orderId : oppositeOrder.orderId,
-                order.isSell() ? order.orderId : oppositeOrder.orderId,
-                symbolId,
-                oppositeOrder.price,
-                matchQty
-            );
-            trades.add(trade);
-            
-            order.filledQuantity += matchQty;
-            oppositeOrder.filledQuantity += matchQty;
-            
-            if (oppositeOrder.getRemainingQuantity() == 0) {
-                level.orders.poll();
-                level.totalQuantity -= oppositeOrder.quantity;
-                oppositeOrder.status = 2;
-                
-                if (level.orders.isEmpty()) {
-                    oppositeSide.remove(bestLevel.getKey());
-                }
-            }
+        long priceLimit = order.isBuy() ? Long.MAX_VALUE : Long.MIN_VALUE;
+        List<Trade> trades = matchAgainst(order, oppositeSide, priceLimit);
+
+        // Market orders are never rested; cancel any unmatched remainder
+        if (order.getRemainingQuantity() > 0 && order.status != 2) {
+            order.status = (byte)(order.filledQuantity > 0 ? 1 : 3);
         }
-        
-        order.status = (byte)(order.getRemainingQuantity() == 0 ? 2 : 1);
+
         return trades;
     }
     
@@ -177,7 +155,8 @@ public class OrderBook {
     private List<Trade> executeIOCOrder(Order order) {
         List<Trade> trades = executeLimitOrder(order);
         if (order.getRemainingQuantity() > 0) {
-            order.status = 3; // Cancelled
+            cancelOrder(order.orderId); // removes from resting book if it was added
+            order.status = 3;           // Cancelled
         }
         return trades;
     }
@@ -186,12 +165,11 @@ public class OrderBook {
      * Fill or Kill - all or nothing
      */
     private List<Trade> executeFOKOrder(Order order) {
-        // Check if full quantity available
         TreeMap<Long, PriceLevel> oppositeSide = order.isBuy() ? asks : bids;
         int availableQty = 0;
         
         for (Map.Entry<Long, PriceLevel> entry : oppositeSide.entrySet()) {
-            if (order.isBuy() && entry.getKey() > order.price) break;
+            if (order.isBuy()  && entry.getKey() > order.price) break;
             if (order.isSell() && entry.getKey() < order.price) break;
             
             availableQty += entry.getValue().totalQuantity;
@@ -252,11 +230,22 @@ public class OrderBook {
     }
     
     /**
-     * Get mid price
+     * Get mid price.
+     * FIX 3: original returned 0 whenever one side was empty and no trades had
+     * occurred. Now falls back to the available side's best price first, so
+     * callers get a meaningful value on a one-sided book.
      */
     public long getMidPrice() {
-        if (bids.isEmpty() || asks.isEmpty()) return lastTradePrice;
-        return (getBestBid() + getBestAsk()) / 2;
+        if (!bids.isEmpty() && !asks.isEmpty()) {
+            return (getBestBid() + getBestAsk()) / 2;
+        }
+        if (!bids.isEmpty()) {
+            return lastTradePrice != 0 ? lastTradePrice : getBestBid();
+        }
+        if (!asks.isEmpty()) {
+            return lastTradePrice != 0 ? lastTradePrice : getBestAsk();
+        }
+        return lastTradePrice; // 0 if no trades yet — caller must handle
     }
     
     /**
