@@ -87,6 +87,13 @@ public class WebSocketApiServer implements AeronMarketDataFeed.WebSocketHandler 
      * Send FIX response to client
      */
     public void sendFixResponse(byte[] fixData) {
+        // FIX: null/empty guard — prevents broadcasting a zero-length or null FIX frame
+        // to clients, which would send a malformed WebSocket message and may crash
+        // counterparty parsers expecting a valid FIX payload
+        if (fixData == null || fixData.length == 0) {
+            logger.warn("sendFixResponse: null or empty FIX data, skipping broadcast");
+            return;
+        }
         broadcastToClients(ByteBuffer.wrap(fixData));
         messagesSent.incrementAndGet();
     }
@@ -95,6 +102,11 @@ public class WebSocketApiServer implements AeronMarketDataFeed.WebSocketHandler 
      * Send binary response to client
      */
     public void sendBinaryResponse(byte[] binaryData) {
+        // FIX: null/empty guard — same reason as sendFixResponse
+        if (binaryData == null || binaryData.length == 0) {
+            logger.warn("sendBinaryResponse: null or empty binary data, skipping broadcast");
+            return;
+        }
         broadcastToClients(ByteBuffer.wrap(binaryData));
         messagesSent.incrementAndGet();
     }
@@ -134,8 +146,14 @@ public class WebSocketApiServer implements AeronMarketDataFeed.WebSocketHandler 
                 connection.send(data);
             } catch (Exception e) {
                 logger.error("Error sending data to connection: {}", connection.getId(), e);
-                connections.remove(connection.getId());
-                connectionCount.decrementAndGet();
+                // FIX: only decrement connectionCount when remove() actually removes the entry.
+                // Previously remove() was called then decrementAndGet() always fired — if the
+                // same connection was already removed by simulateConnectionLoss() or
+                // cleanupOldConnections() concurrently, the counter decremented twice for one
+                // disconnect and eventually went negative, corrupting the connection count stat.
+                if (connections.remove(connection.getId()) != null) {
+                    connectionCount.decrementAndGet();
+                }
             }
         });
     }
@@ -228,8 +246,13 @@ public class WebSocketApiServer implements AeronMarketDataFeed.WebSocketHandler 
             WebSocketConnection connection = connections.get(connectionId);
             if (connection != null && (currentTime - connection.getConnectTime()) > maxAge) {
                 connection.close();
-                connections.remove(connectionId);
-                connectionCount.decrementAndGet();
+                // FIX: only decrement if this thread actually removed the entry.
+                // Without this guard, a concurrent removal by broadcastToClients() or
+                // simulateConnectionLoss() causes a second decrementAndGet() for the same
+                // connection ID, driving connectionCount negative over time.
+                if (connections.remove(connectionId) != null) {
+                    connectionCount.decrementAndGet();
+                }
             }
         });
     }
@@ -240,6 +263,8 @@ public class WebSocketApiServer implements AeronMarketDataFeed.WebSocketHandler 
     private void simulateConnectionLoss() {
         if (!connections.isEmpty()) {
             String connectionId = connections.keys().nextElement();
+            // FIX: connections.remove() returns null if the key was already concurrently
+            // removed — check before decrementing to avoid double-decrement
             WebSocketConnection connection = connections.remove(connectionId);
             if (connection != null) {
                 connection.close();
@@ -307,6 +332,13 @@ public class WebSocketApiServer implements AeronMarketDataFeed.WebSocketHandler 
      * Handle incoming message
      */
     private void handleMessage(byte[] message) {
+        // FIX: null/empty guard — a null or zero-length message would crash isFixMessage()
+        // via new String(message) producing an empty string that still passes silently,
+        // and crash isBinaryMessage() with an ArrayIndexOutOfBoundsException on message[0]
+        if (message == null || message.length == 0) {
+            logger.warn("handleMessage: received null or empty message, skipping");
+            return;
+        }
         try {
             // Determine message type and route to appropriate handler
             if (isFixMessage(message)) {
