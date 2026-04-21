@@ -278,17 +278,18 @@ public class DisruptorEngine {
                 order.status = orderData.status;
                 order.filledQuantity = orderData.filledQuantity;
                 
+                // Notify main engine of order processing to keep counters synchronized
+                // This counts ALL orders (both approved and rejected)
+                if (engine != null) {
+                    engine.onOrderProcessed();
+                }
+                
                 // Risk validation
                 RiskManager.RiskCheckResult riskResult = riskManager.validateOrder(order);
                 if (!riskResult.approved) {
                     performanceMonitor.incrementCounter("orders_rejected_risk_disruptor");
                     logger.debug("Order {} rejected by risk: {}", order.orderId, riskResult.reason);
                     return;
-                }
-
-                // Notify main engine of order processing to keep counters synchronized
-                if (engine != null) {
-                    engine.onOrderProcessed();
                 }
 
                 // FIX: removed engine.processOrderUpdate(order) call here.
