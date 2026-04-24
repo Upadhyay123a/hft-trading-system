@@ -139,9 +139,8 @@ public class DisruptorEngine {
             combinedHandlers[i] = (event, sequence, endOfBatch) -> {
                 if (event[0] == MSG_TYPE_TICK) {
                     tickHandlers[idx].onEvent(event, sequence, endOfBatch);
-                } else if (event[0] == MSG_TYPE_ORDER) {
-                    orderHandlers[idx].onEvent(event, sequence, endOfBatch);
                 }
+                // ORDERS PROCESSED BY .then(orderEventHandlers) ONLY!
             };
         }
 
