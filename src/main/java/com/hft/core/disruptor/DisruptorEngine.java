@@ -152,6 +152,7 @@ public class DisruptorEngine {
         }
 
         disruptor.handleEventsWith(combinedHandlers)
+                 .then(orderHandlers);
                  .thenHandleEventsWithWorkerPool(workHandlers);
     }
     
