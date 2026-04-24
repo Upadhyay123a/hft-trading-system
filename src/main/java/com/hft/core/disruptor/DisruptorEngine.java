@@ -7,7 +7,7 @@ import com.hft.core.binary.BinaryProtocol;
 import com.hft.orderbook.OptimizedOrderBook;
 import com.hft.orderbook.OrderBook;
 // FIX: corrected package — was com.ft.risk.RiskManager (missing 'h' in 'hft')
-import com.hft.risk.RiskManager;
+import com.ft.risk.RiskManager;
 import com.hft.strategy.Strategy;
 import com.hft.monitoring.PerformanceMonitor;
 import com.hft.core.integration.UltraHighPerformanceEngine;
