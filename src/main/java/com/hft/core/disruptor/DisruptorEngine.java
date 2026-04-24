@@ -4,9 +4,10 @@ import com.hft.core.Tick;
 import com.hft.core.Order;
 import com.hft.core.Trade;
 import com.hft.core.binary.BinaryProtocol;
+import com.hft.orderbook.OptimizedOrderBook;
 import com.hft.orderbook.OrderBook;
 // FIX: corrected package — was com.ft.risk.RiskManager (missing 'h' in 'hft')
-import com.ft.risk.RiskManager;
+import com.hft.risk.RiskManager;
 import com.hft.strategy.Strategy;
 import com.hft.monitoring.PerformanceMonitor;
 import com.hft.core.integration.UltraHighPerformanceEngine;
@@ -221,7 +222,7 @@ public class DisruptorEngine {
                 // Get or create order book
                 OrderBook orderBook = orderBooks.computeIfAbsent(
                     tickData.symbolId, 
-                    id -> new OrderBook(id)
+                    id -> new OptimizedOrderBook(id)
                 );
                 
                 // Convert to Tick object for strategy
