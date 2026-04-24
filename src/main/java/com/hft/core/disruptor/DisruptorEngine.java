@@ -229,10 +229,10 @@ public class DisruptorEngine {
                 Tick tick = new Tick(tickData.timestamp, tickData.symbolId, 
                                    tickData.price, tickData.volume, tickData.side);
                 
-                // Generate orders from strategy
+                // Generate orders from strategy and publish to ring buffer
                 List<Order> orders = strategy.onTick(tick, orderBook);
                 
-                // Publish orders back to disruptor
+                // Publish orders to ring buffer for async processing
                 for (Order order : orders) {
                     publishOrder(order);
                 }
