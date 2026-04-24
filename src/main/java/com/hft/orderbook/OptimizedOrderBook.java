@@ -66,9 +66,23 @@ public class OptimizedOrderBook {
                 trades = executeLimitBuy(order);
                 if (order.getRemainingQuantity() == 0) return trades;
             }
+            // FIX: Also try to match if there are sell orders at this exact price level
+            int askIndex = priceToIndex(order.price);
+            if (askIndex >= 0 && askIndex < PRICE_LEVELS && askLevels[askIndex].getTotalQuantity() > 0) {
+                List<Trade> additionalTrades = executeLimitBuy(order);
+                trades.addAll(additionalTrades);
+                if (order.getRemainingQuantity() == 0) return trades;
+            }
         } else {
             if (bestBid != 0 && order.price <= bestBid) {
                 trades = executeLimitSell(order);
+                if (order.getRemainingQuantity() == 0) return trades;
+            }
+            // FIX: Also try to match if there are buy orders at this exact price level
+            int bidIndex = priceToIndex(order.price);
+            if (bidIndex >= 0 && bidIndex < PRICE_LEVELS && bidLevels[bidIndex].getTotalQuantity() > 0) {
+                List<Trade> additionalTrades = executeLimitSell(order);
+                trades.addAll(additionalTrades);
                 if (order.getRemainingQuantity() == 0) return trades;
             }
         }
