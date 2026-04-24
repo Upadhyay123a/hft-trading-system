@@ -14,7 +14,7 @@ public class OptimizedOrderBook {
     private static final Logger logger = LoggerFactory.getLogger(OptimizedOrderBook.class);
     
     private static final long BASE_PRICE = 100000000L;
-    private static final long MAX_PRICE = 250000000L;
+    private static final long MAX_PRICE = 1000000000L;  // $10,000 max
     private static final long MIN_PRICE = 50000L;
     private static final int PRICE_TICK = 100;
     private static final int PRICE_LEVELS = (int)(((MAX_PRICE - MIN_PRICE) / PRICE_TICK) + 1);
