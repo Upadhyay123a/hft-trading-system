@@ -151,15 +151,7 @@ public class DisruptorEngine {
             workHandlers[i] = new MarketDataWorker(i);
         }
 
-        // Convert OrderEventHandler[] to EventHandler[] for proper pipeline
-        @SuppressWarnings("unchecked")
-        EventHandler<byte[]>[] orderEventHandlers = new EventHandler[NUM_PROCESSORS];
-        for (int i = 0; i < NUM_PROCESSORS; i++) {
-            orderEventHandlers[i] = orderHandlers[i];
-        }
-
         disruptor.handleEventsWith(combinedHandlers)
-                 .then(orderEventHandlers)
                  .thenHandleEventsWithWorkerPool(workHandlers);
     }
     
