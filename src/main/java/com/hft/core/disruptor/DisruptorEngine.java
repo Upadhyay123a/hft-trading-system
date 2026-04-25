@@ -137,15 +137,15 @@ public class DisruptorEngine {
         for (int i = 0; i < NUM_PROCESSORS; i++) {
             final int idx = i;
             combinedHandlers[i] = (event, sequence, endOfBatch) -> {
-                logger.debug("CombinedHandler received message type: {}", event[0]);
+                logger.info("CombinedHandler received message type: {}", event[0]);
                 if (event[0] == MSG_TYPE_TICK) {
-                    logger.debug("Routing to TickEventHandler");
+                    logger.info("Routing to TickEventHandler");
                     tickHandlers[idx].onEvent(event, sequence, endOfBatch);
                 } else if (event[0] == MSG_TYPE_ORDER) {
-                    logger.debug("Routing to OrderEventHandler");
+                    logger.info("Routing to OrderEventHandler");
                     orderHandlers[idx].onEvent(event, sequence, endOfBatch);
                 } else {
-                    logger.debug("Unknown message type: {}", event[0]);
+                    logger.info("Unknown message type: {}", event[0]);
                 }
             };
         }
