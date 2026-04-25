@@ -222,7 +222,7 @@ public class DisruptorEngine {
                 // Get or create order book
                 OrderBook orderBook = orderBooks.computeIfAbsent(
                     tickData.symbolId, 
-                    id -> new OptimizedOrderBook(id)
+                    id -> (OrderBook) new OptimizedOrderBook(id)
                 );
                 
                 // Convert to Tick object for strategy
