@@ -25,13 +25,12 @@ public class OptimizedOrderBook extends OrderBook {
     
     private long bestBid = 0;
     private long bestAsk = Long.MAX_VALUE;
-    private final int symbolId;
     
     private final AtomicLong orderCount = new AtomicLong(0);
     private final AtomicLong tradeCount = new AtomicLong(0);
     
     public OptimizedOrderBook(int symbolId) {
-        this.symbolId = symbolId;
+        super(symbolId);
         initializePriceLevels();
         logger.info("OptimizedOrderBook initialized for symbol {} with {} price levels", symbolId, PRICE_LEVELS);
     }
