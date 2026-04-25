@@ -10,7 +10,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class OptimizedOrderBook {
+public class OptimizedOrderBook extends OrderBook {
     private static final Logger logger = LoggerFactory.getLogger(OptimizedOrderBook.class);
     
     private static final long BASE_PRICE = 100000000L;
