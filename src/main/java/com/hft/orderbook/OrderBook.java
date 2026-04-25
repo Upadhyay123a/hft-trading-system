@@ -11,7 +11,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * Uses TreeMap for price levels and maintains fast lookup
  */
 public class OrderBook {
-    private final int symbolId;
+    protected final int symbolId;
     
     // Price levels: price -> total quantity at that level
     private final TreeMap<Long, PriceLevel> bids = new TreeMap<>(Collections.reverseOrder());
