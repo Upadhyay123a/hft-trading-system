@@ -79,9 +79,14 @@ public class MomentumStrategy implements Strategy {
             return orders;
         }
         
-        // Calculate momentum
-        long oldPrice = recentPrices.peekFirst();
-        long newPrice = recentPrices.peekLast();
+        // Calculate momentum with null safety
+        Long oldPriceObj = recentPrices.peekFirst();
+        Long newPriceObj = recentPrices.peekLast();
+        if (oldPriceObj == null || newPriceObj == null) {
+            return orders; // Skip if price data is invalid
+        }
+        long oldPrice = oldPriceObj;
+        long newPrice = newPriceObj;
         
         // Add null safety for price calculation
         if (oldPrice <= 0 || newPrice <= 0) {
