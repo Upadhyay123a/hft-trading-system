@@ -13,6 +13,7 @@ import com.hft.strategy.AIEnhancedStrategy;
 // FIX: added missing ML strategy import (issue 4)
 import com.hft.strategy.MLEnhancedMarketMakingStrategy;
 import com.hft.strategy.Strategy;
+import com.hft.simulation.MarketSimulator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,6 +39,7 @@ public class Main {
     private static volatile UltraHighPerformanceEngine engine;
     private static volatile BinanceConnector connector;
     private static volatile Thread dataThread;
+    private static volatile MarketSimulator marketSimulator;
 
     public static void main(String[] args) {
         logger.info("=== HFT Trading System ===");
@@ -68,14 +70,20 @@ public class Main {
                 eng.stop();
             }
 
-            // 4. Stop the exchange connector (closes WebSocket / sockets).
+            // 4. Stop the market simulator
+            MarketSimulator sim = marketSimulator;
+            if (sim != null) {
+                sim.stop();
+            }
+
+            // 5. Stop the exchange connector (closes WebSocket / sockets).
             BinanceConnector conn = connector;
             if (conn != null) {
                 logger.info("Disconnecting Binance connector...");
                 conn.disconnect(); // make sure BinanceConnector has this method
             }
 
-            // 5. Wait briefly for data thread to finish.
+            // 6. Wait briefly for data thread to finish.
             Thread dt2 = dataThread;
             if (dt2 != null && dt2.isAlive()) {
                 try {
@@ -122,6 +130,13 @@ public class Main {
         logger.info("Starting Ultra-High Performance Trading Engine...");
         engine = new UltraHighPerformanceEngine(strategy, riskManager);
         engine.start();
+
+        // ─── Market Simulator ────────────────────────────────────────────────
+        // Create market simulator to generate counter-party orders for testing
+        int[] symbolIds = {SymbolMapper.BTCUSDT, SymbolMapper.ETHUSDT};
+        marketSimulator = new MarketSimulator(engine, 0.3, 1, 3, symbolIds);
+        marketSimulator.start();
+        logger.info("Market Simulator started - generating counter-party orders");
 
         // ─── Data feed thread ────────────────────────────────────────────────
         // Mark as daemon=true so it cannot prevent JVM exit on its own.
