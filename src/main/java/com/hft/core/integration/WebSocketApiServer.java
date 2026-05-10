@@ -311,9 +311,9 @@ public class WebSocketApiServer implements AeronMarketDataFeed.WebSocketHandler 
                 // 30% chance of small FIX message
                 return "35=D|55=BTCUSDT|44=50000".getBytes();
             } else if (rand < 0.6) {
-                // 30% chance of small binary message
+                // 30% chance of small binary message - fix message type
                 ByteBuffer buffer = ByteBuffer.allocate(16);
-                buffer.put((byte)1); // Message type
+                buffer.put((byte)1); // ORDER_MESSAGE type
                 buffer.putLong(System.currentTimeMillis()); // Timestamp
                 buffer.putInt(12345); // Symbol ID
                 buffer.flip();
