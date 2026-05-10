@@ -304,27 +304,30 @@ public class WebSocketApiServer implements AeronMarketDataFeed.WebSocketHandler 
      */
     private byte[] simulateMessage() {
         try {
-            // Simulate different message types (smaller, safer)
+            // Simulate different message types (only valid ones)
             double rand = Math.random();
             
-            if (rand < 0.3) {
-                // 30% chance of small FIX message
+            if (rand < 0.5) {
+                // 50% chance of small FIX message
                 return "35=D|55=BTCUSDT|44=50000".getBytes();
-            } else if (rand < 0.6) {
-                // 30% chance of small binary message - fix message type
+            } else {
+                // 50% chance of valid binary ORDER message
                 ByteBuffer buffer = ByteBuffer.allocate(16);
-                buffer.put((byte)1); // ORDER_MESSAGE type
+                buffer.put((byte)1); // ORDER_MESSAGE type (valid)
                 buffer.putLong(System.currentTimeMillis()); // Timestamp
                 buffer.putInt(12345); // Symbol ID
                 buffer.flip();
                 return buffer.array();
-            } else {
-                // 40% chance of small text message
-                return ("MSG:" + System.currentTimeMillis()).getBytes();
             }
         } catch (Exception e) {
             logger.error("Error creating simulated message: {}", e.getMessage());
-            return new byte[0]; // Return empty array on error
+            // Return a valid ORDER message instead of empty array
+            ByteBuffer buffer = ByteBuffer.allocate(16);
+            buffer.put((byte)1); // ORDER_MESSAGE type
+            buffer.putLong(System.currentTimeMillis());
+            buffer.putInt(12345);
+            buffer.flip();
+            return buffer.array();
         }
     }
     
