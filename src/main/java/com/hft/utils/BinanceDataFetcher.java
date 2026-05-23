@@ -12,13 +12,14 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-
-import com.google.gson.JsonArray;
-import com.google.gson.JsonParser;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Fetches historical BTCUSDT 1-minute klines from Binance public API and saves to CSV.
- * No API key required; uses free public endpoints.
+ * No external JSON library required; uses regex parsing.
  */
 public class BinanceDataFetcher {
     private static final String API_URL = "https://api.binance.com/api/v3/klines";
@@ -38,37 +39,31 @@ public class BinanceDataFetcher {
         System.out.println("End time: " + new java.util.Date(endTime));
         
         // Fetch all klines
-        StringBuilder allKlinesBuffer = new StringBuilder();
-        allKlinesBuffer.append("[\n");
+        List<String[]> allKlines = new ArrayList<>();
         long currentStartTime = startTime;
         int batchCount = 0;
-        boolean firstBatch = true;
         
         while (currentStartTime < endTime) {
             System.out.println("Fetching batch " + (++batchCount) + " starting from " + new java.util.Date(currentStartTime));
             
-            JsonArray batch = fetchKlines(currentStartTime, endTime);
-            if (batch.size() == 0) {
+            List<String[]> batch = fetchKlines(currentStartTime, endTime);
+            if (batch.isEmpty()) {
                 System.out.println("No more data available.");
                 break;
             }
             
-            if (!firstBatch) {
-                allKlinesBuffer.append(",\n");
-            }
-            allKlinesBuffer.append(batch.toString());
-            firstBatch = false;
+            allKlines.addAll(batch);
             
             // Move to next batch start time (last kline time + 1 ms)
-            long lastKlineTime = batch.get(batch.size() - 1).getAsJsonArray().get(0).getAsLong();
+            long lastKlineTime = Long.parseLong(batch.get(batch.size() - 1)[0]);
             currentStartTime = lastKlineTime + 1;
+            
+            System.out.println("Batch " + batchCount + " complete. Fetched " + batch.size() + " klines. Total: " + allKlines.size());
             
             // Be respectful to the API
             Thread.sleep(500);
         }
         
-        allKlinesBuffer.append("\n]");
-        JsonArray allKlines = JsonParser.parseString(allKlinesBuffer.toString()).getAsJsonArray();
         System.out.println("Total klines fetched: " + allKlines.size());
         
         // Save to CSV
@@ -76,7 +71,7 @@ public class BinanceDataFetcher {
         System.out.println("Data saved to: " + OUTPUT_CSV);
     }
     
-    private static JsonArray fetchKlines(long startTime, long endTime) throws Exception {
+    private static List<String[]> fetchKlines(long startTime, long endTime) throws Exception {
         String urlStr = String.format(
             "%s?symbol=%s&interval=%s&startTime=%d&endTime=%d&limit=%d",
             API_URL, SYMBOL, INTERVAL, startTime, endTime, BATCH_SIZE
@@ -91,7 +86,8 @@ public class BinanceDataFetcher {
         
         int status = conn.getResponseCode();
         if (status != 200) {
-            throw new IOException("API request failed with status " + status);
+            System.err.println("API error: " + status);
+            return new ArrayList<>();
         }
         
         BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8));
@@ -102,27 +98,43 @@ public class BinanceDataFetcher {
         }
         reader.close();
         
-        return JsonParser.parseString(response.toString()).getAsJsonArray();
+        return parseKlinesJSON(response.toString());
     }
     
-    private static void saveToCSV(JsonArray klines) throws IOException {
+    /**
+     * Parse JSON array of klines using regex (no external JSON library).
+     * Each kline is: [timestamp, open, high, low, close, volume, ...]
+     */
+    private static List<String[]> parseKlinesJSON(String json) {
+        List<String[]> klines = new ArrayList<>();
+        
+        // Match each kline array: [num, "str", "str", "str", "str", "str", ...]
+        Pattern klinePattern = Pattern.compile("\\[(\\d+),\"([^\"]+)\",\"([^\"]+)\",\"([^\"]+)\",\"([^\"]+)\",\"([^\"]+)\"");
+        Matcher matcher = klinePattern.matcher(json);
+        
+        while (matcher.find()) {
+            String timestamp = matcher.group(1);
+            String open = matcher.group(2);
+            String high = matcher.group(3);
+            String low = matcher.group(4);
+            String close = matcher.group(5);
+            String volume = matcher.group(6);
+            
+            klines.add(new String[]{timestamp, open, high, low, close, volume});
+        }
+        
+        return klines;
+    }
+    
+    private static void saveToCSV(List<String[]> klines) throws IOException {
         Files.createDirectories(Paths.get("data"));
         
         try (FileWriter fw = new FileWriter(OUTPUT_CSV); BufferedWriter bw = new BufferedWriter(fw)) {
             // Write header
             bw.write("timestamp,open,high,low,close,volume\n");
             
-            for (int i = 0; i < klines.size(); i++) {
-                JsonArray kline = klines.get(i).getAsJsonArray();
-                
-                long timestamp = kline.get(0).getAsLong();
-                String open = kline.get(1).getAsString();
-                String high = kline.get(2).getAsString();
-                String low = kline.get(3).getAsString();
-                String close = kline.get(4).getAsString();
-                String volume = kline.get(7).getAsString(); // Quote asset volume
-                
-                bw.write(String.format("%d,%s,%s,%s,%s,%s\n", timestamp, open, high, low, close, volume));
+            for (String[] kline : klines) {
+                bw.write(String.join(",", kline) + "\n");
             }
         }
     }
