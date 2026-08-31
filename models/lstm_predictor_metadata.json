@@ -1,1 +1,1 @@
-{"modelName":"lstm_predictor","version":"1.0","accuracy":0.78,"trainingDate":"2026-08-31T15:00:47.7314889","lastUpdated":"2026-08-31T15:00:47.7405478","modelPath":"models\lstm_predictor.model","description":"","hyperparameters":{},"performanceMetrics":{}}
+{"modelName":"lstm_predictor","version":"1.0","accuracy":0.78,"trainingDate":"2026-08-31T15:05:46.0928644","lastUpdated":"2026-08-31T15:05:46.0970562","modelPath":"models\lstm_predictor.model","description":"","hyperparameters":{},"performanceMetrics":{}}
