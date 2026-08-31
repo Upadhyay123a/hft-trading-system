@@ -106,23 +106,49 @@ public class BinanceRealApi implements MultiExchangeManager.ExchangeApi {
         // Private endpoints (orders, account info) still require credentials and will fail gracefully.
         
         return CompletableFuture.runAsync(() -> {
+            int maxRetries = 3;
+            long baseBackoff = 500; // ms
             try {
-                StringBuilder streamUrl = new StringBuilder(getWebSocketBase() + "/");
-                for (int i = 0; i < symbols.size(); i++) {
-                    if (i > 0) streamUrl.append("/");
-                    streamUrl.append(symbols.get(i).toLowerCase()).append("@depth20@100ms");
+                String retriesProp = System.getProperty("binance.ws.connect.retries");
+                if (retriesProp != null) maxRetries = Integer.parseInt(retriesProp);
+            } catch (Exception ignored) {}
+            try {
+                String backoffProp = System.getProperty("binance.ws.connect.backoffMillis");
+                if (backoffProp != null) baseBackoff = Long.parseLong(backoffProp);
+            } catch (Exception ignored) {}
+
+            StringBuilder streamUrl = new StringBuilder(getWebSocketBase() + "/");
+            for (int i = 0; i < symbols.size(); i++) {
+                if (i > 0) streamUrl.append("/");
+                streamUrl.append(symbols.get(i).toLowerCase()).append("@depth20@100ms");
+            }
+
+            int attempt = 0;
+            while (attempt <= maxRetries) {
+                try {
+                    attempt++;
+                    WebSocket ws = HttpClient.newHttpClient()
+                        .newWebSocketBuilder()
+                        .buildAsync(URI.create(streamUrl.toString()), new BinanceWebSocketListener())
+                        .join();
+
+                    websockets.put("marketdata", ws);
+                    logger.info("Connected to Binance market data: {} (attempt {})", streamUrl, attempt);
+                    return; // success
+                } catch (Exception e) {
+                    logger.warn("Attempt {}: Failed to connect to Binance market data: {}", attempt, e.toString());
+                    if (attempt > maxRetries) {
+                        logger.error("Exceeded max retries connecting to Binance market data", e);
+                        break;
+                    }
+                    try {
+                        long backoff = baseBackoff * (1L << (attempt - 1));
+                        Thread.sleep(backoff);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
                 }
-                
-                WebSocket ws = HttpClient.newHttpClient()
-                    .newWebSocketBuilder()
-                    .buildAsync(URI.create(streamUrl.toString()), new BinanceWebSocketListener())
-                    .join();
-                
-                websockets.put("marketdata", ws);
-                logger.info("Connected to Binance market data: {}", streamUrl);
-                
-            } catch (Exception e) {
-                logger.error("Failed to connect to Binance market data", e);
             }
         });
     }
