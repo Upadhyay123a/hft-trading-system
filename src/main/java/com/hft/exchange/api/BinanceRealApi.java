@@ -1,29 +1,28 @@
 package com.hft.exchange.api;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import com.hft.core.Order;
-import com.hft.core.Tick;
-import com.hft.monitoring.PerformanceMonitor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.WebSocket;
-import java.nio.charset.StandardCharsets;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Supplier;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.hft.core.Order;
+import com.hft.monitoring.PerformanceMonitor;
 
 /**
  * Real Binance API Integration with Authentication
@@ -36,6 +35,11 @@ public class BinanceRealApi implements MultiExchangeManager.ExchangeApi {
     private static final String REST_BASE_URL = "https://api.binance.com";
     private static final String WS_BASE_URL = "wss://stream.binance.com:9443/ws";
     private static final String USER_DATA_STREAM = "wss://stream.binance.com:9443/ws";
+    private static String getWebSocketBase() {
+        String override = System.getProperty("binance.ws.override");
+        if (override != null && !override.isEmpty()) return override;
+        return WS_BASE_URL;
+    }
     
     // HTTP client for REST API
     private final HttpClient httpClient;
@@ -98,14 +102,12 @@ public class BinanceRealApi implements MultiExchangeManager.ExchangeApi {
      * Connect to market data WebSocket
      */
     public CompletableFuture<Void> connectMarketData(List<String> symbols) {
-        if (!apiKeyManager.isExchangeConfigured("binance")) {
-            logger.error("Binance API credentials not configured");
-            return CompletableFuture.failedFuture(new RuntimeException("Binance not configured"));
-        }
+        // Market data streams are public on Binance and do not require API credentials.
+        // Private endpoints (orders, account info) still require credentials and will fail gracefully.
         
         return CompletableFuture.runAsync(() -> {
             try {
-                StringBuilder streamUrl = new StringBuilder(WS_BASE_URL + "/");
+                StringBuilder streamUrl = new StringBuilder(getWebSocketBase() + "/");
                 for (int i = 0; i < symbols.size(); i++) {
                     if (i > 0) streamUrl.append("/");
                     streamUrl.append(symbols.get(i).toLowerCase()).append("@depth20@100ms");

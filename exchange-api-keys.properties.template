@@ -1,0 +1,13 @@
+# exchange-api-keys.properties.template
+# Copy this file to `exchange-api-keys.properties` and fill in your API credentials.
+# Leave values blank or omit the file to use public market data only (no trading/account access).
+
+# Binance (public market data works without keys)
+binance.api.key=
+binance.api.secret=
+
+# Coinbase (example)
+# coinbase.api.key=
+# coinbase.api.secret=
+
+# NOTE: Do NOT commit real API keys to version control. Use environment secrets or CI vaults.

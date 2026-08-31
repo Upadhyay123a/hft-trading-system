@@ -53,12 +53,14 @@ public class MultiExchangeManager {
     private void initializeExchanges() {
         ApiKeyManager apiKeyManager = ApiKeyManager.getInstance();
         
-        // Initialize Binance if configured
-        if (apiKeyManager.isExchangeConfigured("binance")) {
+        // Initialize Binance for public market data even if API keys are not configured
+        try {
             ExchangeApi binance = new BinanceRealApi();
             exchanges.put("binance", binance);
-            exchangeStatuses.put("binance", new ExchangeStatus("binance", true));
-            logger.info("Initialized Binance API");
+            exchangeStatuses.put("binance", new ExchangeStatus("binance", false));
+            logger.info("Initialized Binance API (market data enabled) - private endpoints require API keys");
+        } catch (Exception e) {
+            logger.warn("Failed to initialize Binance API: {}", e.getMessage());
         }
         
         // Initialize Coinbase if configured

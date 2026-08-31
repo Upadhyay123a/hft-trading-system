@@ -690,7 +690,7 @@ public class HistoricalDataTrainer {
         try {
             // Save regime classifier (only if present)
             if (results.getModelResults().containsKey("regime_classifier") && results.getModelResults().get("regime_classifier") != null) {
-                Object regimeModel = regimeClassifier.getModel();
+                MarketRegimeClassifier.TrainedModel regimeModel = regimeClassifier.getModel();
                 if (regimeModel != null) {
                     MLModelPersistence.ModelMetadata regimeMetadata = new MLModelPersistence.ModelMetadata("regime_classifier", "1.0");
                     regimeMetadata.accuracy = results.getModelResults().get("regime_classifier").accuracy;
@@ -705,7 +705,7 @@ public class HistoricalDataTrainer {
             
             // Save LSTM predictor
             if (results.getModelResults().containsKey("lstm_predictor") && results.getModelResults().get("lstm_predictor") != null) {
-                Object lstmModel = lstmPredictor.getModel();
+                LSTMPricePredictor.TrainedModel lstmModel = lstmPredictor.getModel();
                 if (lstmModel != null) {
                     MLModelPersistence.ModelMetadata lstmMetadata = new MLModelPersistence.ModelMetadata("lstm_predictor", "1.0");
                     lstmMetadata.accuracy = results.getModelResults().get("lstm_predictor").accuracy;
@@ -720,7 +720,7 @@ public class HistoricalDataTrainer {
             
             // Save RL agent
             if (results.getModelResults().containsKey("rl_agent") && results.getModelResults().get("rl_agent") != null) {
-                Object rlModel = rlAgent.getModel();
+                ReinforcementLearningAgent.TrainedModel rlModel = rlAgent.getModel();
                 if (rlModel != null) {
                     MLModelPersistence.ModelMetadata rlMetadata = new MLModelPersistence.ModelMetadata("rl_agent", "1.0");
                     rlMetadata.accuracy = results.getModelResults().get("rl_agent").accuracy;

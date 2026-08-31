@@ -67,6 +67,8 @@ public class RealTimeMLProcessor {
     private volatile MarketRegime currentRegime;
     private volatile double lastPrediction;
     private volatile double lastConfidence;
+    // Model readiness flag
+    private volatile boolean modelsReady;
     
     public RealTimeMLProcessor(MultiExchangeManager exchangeManager) {
         this.exchangeManager = exchangeManager;
@@ -98,6 +100,7 @@ public class RealTimeMLProcessor {
         this.currentRegime = MarketRegime.RANGING;
         this.lastPrediction = 0.0;
         this.lastConfidence = 0.5;
+        this.modelsReady = false;
         
         // Load existing models if available
         loadExistingModels();
@@ -634,6 +637,7 @@ public class RealTimeMLProcessor {
             if (regimeModel != null) {
                 regimeClassifier.loadModel(regimeModel);
                 logger.info("Loaded regime classifier model");
+                modelsReady = true;
             }
             
             // Load LSTM predictor
@@ -641,6 +645,7 @@ public class RealTimeMLProcessor {
             if (lstmModel != null) {
                 lstmPredictor.loadModel(lstmModel);
                 logger.info("Loaded LSTM predictor model");
+                modelsReady = true;
             }
             
             // Load RL agent
@@ -648,11 +653,24 @@ public class RealTimeMLProcessor {
             if (rlModel != null) {
                 rlAgent.loadModel(rlModel);
                 logger.info("Loaded RL agent model");
+                modelsReady = true;
             }
             
         } catch (Exception e) {
             logger.warn("Failed to load existing models: {}", e.getMessage());
+        } finally {
+            // Also consider the in-memory components' trained state
+            if (!modelsReady) {
+                modelsReady = regimeClassifier.isTrained() || lstmPredictor.isTrained() || rlAgent.isTrained();
+            }
         }
+    }
+
+    /**
+     * Returns true if at least one of the core models is loaded/trained.
+     */
+    public boolean areModelsReady() {
+        return modelsReady;
     }
     
     /**

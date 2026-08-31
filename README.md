@@ -798,6 +798,28 @@ mvn exec:java -Dexec.mainClass="com.hft.backtest.TrainAndRunAdvancedML"
 **Strategy Selection**:
 ```
 1. Market Making (provides liquidity, captures spread)
+
+---
+
+## 🔐 API Keys & Public Market Data
+
+- **Public market data** (market ticks, trades, klines) is available without API keys — the system will connect to Binance public endpoints by default.
+- To enable private/trading endpoints (orders, account info), create `exchange-api-keys.properties` in the project root using the provided template and fill in your API credentials.
+- Template: `exchange-api-keys.properties.template` (included at repository root).
+
+How to use:
+
+1. Copy the template:
+
+```bash
+cp exchange-api-keys.properties.template exchange-api-keys.properties
+```
+
+2. Edit `exchange-api-keys.properties` and add your provider keys.
+
+3. Restart the app; private endpoints will enable automatically.
+
+Security note: never commit real keys to source control. Use environment secrets or CI vaults in production.
 2. Momentum (follows price trends)
 3. Triangular Arbitrage (exploits cross-currency inefficiencies)
 4. Statistical Arbitrage (mean reversion, pairs trading)

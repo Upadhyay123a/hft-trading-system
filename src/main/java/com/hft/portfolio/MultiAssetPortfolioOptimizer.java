@@ -69,7 +69,7 @@ public class MultiAssetPortfolioOptimizer {
     private final ScheduledExecutorService optimizer;
     // Scheduler to delay optimizer start until ML models are available
     private final ScheduledExecutorService startupScheduler;
-    private final long startupTimeoutMillis = 30_000; // 30s
+    private final long startupTimeoutMillis; // configurable via system property 'optimizer.startupTimeoutMillis'
     private final long startupStartTime;
     
     // ML processor for market analysis
@@ -103,6 +103,18 @@ public class MultiAssetPortfolioOptimizer {
         this.optimizer = Executors.newScheduledThreadPool(4);
         this.startupScheduler = Executors.newSingleThreadScheduledExecutor();
         this.startupStartTime = System.currentTimeMillis();
+
+        // Read configurable startup timeout (ms) from system property if provided
+        long configured = 30000L;
+        try {
+            String prop = System.getProperty("optimizer.startupTimeoutMillis");
+            if (prop != null && !prop.isEmpty()) {
+                configured = Long.parseLong(prop);
+            }
+        } catch (Exception e) {
+            logger.warn("Invalid optimizer.startupTimeoutMillis property, using default 30000ms");
+        }
+        this.startupTimeoutMillis = configured;
 
         // Initialize components for each asset
         initializeAssets();
@@ -836,8 +848,11 @@ public class MultiAssetPortfolioOptimizer {
                 }
             }
 
+            // Also accept readiness if the central RealTimeMLProcessor has loaded models
+            boolean mlProcessorReady = (mlProcessor != null && mlProcessor.areModelsReady());
+
             long elapsed = System.currentTimeMillis() - startupStartTime;
-            if (allTrained || elapsed >= startupTimeoutMillis) {
+            if (allTrained || mlProcessorReady || elapsed >= startupTimeoutMillis) {
                 // Start optimization and stop the startup scheduler
                 startOptimization();
                 try {
