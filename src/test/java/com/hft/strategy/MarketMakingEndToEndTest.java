@@ -1,19 +1,19 @@
 package com.hft.strategy;
 
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
+
 import com.hft.core.Tick;
 import com.hft.orderbook.OrderBook;
-import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
-
-import java.util.List;
 
 public class MarketMakingEndToEndTest {
 
-    private static class SimpleOrderBook implements OrderBook {
+    private static class SimpleOrderBook extends OrderBook {
         private long midPrice;
-        public SimpleOrderBook(long midPrice) { this.midPrice = midPrice; }
+        public SimpleOrderBook(int symbolId, long midPrice) { super(symbolId); this.midPrice = midPrice; }
         @Override public long getMidPrice() { return midPrice; }
-        // unused
     }
 
     @Test
@@ -24,7 +24,7 @@ public class MarketMakingEndToEndTest {
 
         // Create a tick for our symbol and an order book
         Tick tick = new Tick(System.currentTimeMillis(), 1, 10_000L, 1, (byte)0);
-        OrderBook ob = new SimpleOrderBook(10_000L);
+        OrderBook ob = new SimpleOrderBook(1, 10_000L);
 
         // First tick should produce two orders (buy & sell)
         List<com.hft.core.Order> orders = strat.onTick(tick, ob);
