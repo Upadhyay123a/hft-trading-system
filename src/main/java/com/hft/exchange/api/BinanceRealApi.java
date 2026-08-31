@@ -14,6 +14,9 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.slf4j.Logger;
@@ -50,6 +53,10 @@ public class BinanceRealApi implements MultiExchangeManager.ExchangeApi {
     // WebSocket connections
     private final Map<String, WebSocket> websockets = new ConcurrentHashMap<>();
     private final String listenKey;
+    // reconnect support
+    private volatile List<String> lastMarketSymbols = null;
+    private final ScheduledExecutorService reconnectScheduler;
+    private final boolean autoReconnectEnabled;
     
     // Rate limiting
     private final AtomicLong requestCount = new AtomicLong(0);
@@ -66,6 +73,30 @@ public class BinanceRealApi implements MultiExchangeManager.ExchangeApi {
         this.performanceMonitor = PerformanceMonitor.getInstance();
         this.listenKey = apiKeyManager.isExchangeConfigured("binance") ? 
             createUserDataStream() : null;
+        this.autoReconnectEnabled = Boolean.parseBoolean(System.getProperty("binance.ws.autoReconnect", "true"));
+        this.reconnectScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "binance-reconnect");
+            t.setDaemon(true);
+            return t;
+        });
+
+        // periodic reconnect supervisor
+        this.reconnectScheduler.scheduleAtFixedRate(() -> {
+            try {
+                if (!autoReconnectEnabled) return;
+                if ((websockets.get("marketdata") == null || websockets.get("marketdata").isInputClosed())
+                        && lastMarketSymbols != null) {
+                    logger.info("Reconnect supervisor: attempting reconnect to market data");
+                    try {
+                        connectMarketData(lastMarketSymbols).join();
+                    } catch (Exception e) {
+                        logger.debug("Reconnect supervisor: reconnect attempt failed", e);
+                    }
+                }
+            } catch (Throwable t) {
+                logger.debug("Reconnect supervisor error", t);
+            }
+        }, 10, 10, TimeUnit.SECONDS);
         
         logger.info("Binance Real API initialized");
     }
@@ -106,23 +137,55 @@ public class BinanceRealApi implements MultiExchangeManager.ExchangeApi {
         // Private endpoints (orders, account info) still require credentials and will fail gracefully.
         
         return CompletableFuture.runAsync(() -> {
+            // store last requested symbols for reconnect supervisor
+            this.lastMarketSymbols = symbols == null ? null : List.copyOf(symbols);
+
+            int maxRetries = 3;
+            long baseBackoff = 500; // ms
             try {
-                StringBuilder streamUrl = new StringBuilder(getWebSocketBase() + "/");
-                for (int i = 0; i < symbols.size(); i++) {
-                    if (i > 0) streamUrl.append("/");
-                    streamUrl.append(symbols.get(i).toLowerCase()).append("@depth20@100ms");
+                String retriesProp = System.getProperty("binance.ws.connect.retries");
+                if (retriesProp != null) maxRetries = Integer.parseInt(retriesProp);
+            } catch (Exception ignored) {}
+            try {
+                String backoffProp = System.getProperty("binance.ws.connect.backoffMillis");
+                if (backoffProp != null) baseBackoff = Long.parseLong(backoffProp);
+            } catch (Exception ignored) {}
+
+            StringBuilder streamUrl = new StringBuilder(getWebSocketBase() + "/");
+            for (int i = 0; i < symbols.size(); i++) {
+                if (i > 0) streamUrl.append("/");
+                streamUrl.append(symbols.get(i).toLowerCase()).append("@depth20@100ms");
+            }
+
+            int attempt = 0;
+            while (attempt <= maxRetries) {
+                try {
+                    attempt++;
+                    WebSocket ws = HttpClient.newHttpClient()
+                        .newWebSocketBuilder()
+                        .buildAsync(URI.create(streamUrl.toString()), new BinanceWebSocketListener())
+                        .join();
+
+                    websockets.put("marketdata", ws);
+                    logger.info("Connected to Binance market data: {} (attempt {})", streamUrl, attempt);
+                    return; // success
+                } catch (Exception e) {
+                    logger.warn("Attempt {}: Failed to connect to Binance market data: {}", attempt, e.toString());
+                    if (attempt > maxRetries) {
+                        logger.error("Exceeded max retries connecting to Binance market data", e);
+                        break;
+                    }
+                        try {
+                            long backoff = baseBackoff * (1L << (attempt - 1));
+                            // add jitter up to baseBackoff
+                            long jitter = (long) (Math.random() * baseBackoff);
+                            backoff += jitter;
+                            Thread.sleep(backoff);
+                        } catch (InterruptedException ie) {
+                            Thread.currentThread().interrupt();
+                            break;
+                        }
                 }
-                
-                WebSocket ws = HttpClient.newHttpClient()
-                    .newWebSocketBuilder()
-                    .buildAsync(URI.create(streamUrl.toString()), new BinanceWebSocketListener())
-                    .join();
-                
-                websockets.put("marketdata", ws);
-                logger.info("Connected to Binance market data: {}", streamUrl);
-                
-            } catch (Exception e) {
-                logger.error("Failed to connect to Binance market data", e);
             }
         });
     }
