@@ -50,6 +50,10 @@ public class BinanceRealApi implements MultiExchangeManager.ExchangeApi {
     // WebSocket connections
     private final Map<String, WebSocket> websockets = new ConcurrentHashMap<>();
     private final String listenKey;
+    // reconnect support
+    private volatile List<String> lastMarketSymbols = null;
+    private final ScheduledExecutorService reconnectScheduler;
+    private final boolean autoReconnectEnabled;
     
     // Rate limiting
     private final AtomicLong requestCount = new AtomicLong(0);
@@ -66,6 +70,30 @@ public class BinanceRealApi implements MultiExchangeManager.ExchangeApi {
         this.performanceMonitor = PerformanceMonitor.getInstance();
         this.listenKey = apiKeyManager.isExchangeConfigured("binance") ? 
             createUserDataStream() : null;
+        this.autoReconnectEnabled = Boolean.parseBoolean(System.getProperty("binance.ws.autoReconnect", "true"));
+        this.reconnectScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "binance-reconnect");
+            t.setDaemon(true);
+            return t;
+        });
+
+        // periodic reconnect supervisor
+        this.reconnectScheduler.scheduleAtFixedRate(() -> {
+            try {
+                if (!autoReconnectEnabled) return;
+                if ((websockets.get("marketdata") == null || websockets.get("marketdata").isInputClosed())
+                        && lastMarketSymbols != null) {
+                    logger.info("Reconnect supervisor: attempting reconnect to market data");
+                    try {
+                        connectMarketData(lastMarketSymbols).join();
+                    } catch (Exception e) {
+                        logger.debug("Reconnect supervisor: reconnect attempt failed", e);
+                    }
+                }
+            } catch (Throwable t) {
+                logger.debug("Reconnect supervisor error", t);
+            }
+        }, 10, 10, TimeUnit.SECONDS);
         
         logger.info("Binance Real API initialized");
     }
@@ -106,6 +134,9 @@ public class BinanceRealApi implements MultiExchangeManager.ExchangeApi {
         // Private endpoints (orders, account info) still require credentials and will fail gracefully.
         
         return CompletableFuture.runAsync(() -> {
+            // store last requested symbols for reconnect supervisor
+            this.lastMarketSymbols = symbols == null ? null : List.copyOf(symbols);
+
             int maxRetries = 3;
             long baseBackoff = 500; // ms
             try {
@@ -141,13 +172,16 @@ public class BinanceRealApi implements MultiExchangeManager.ExchangeApi {
                         logger.error("Exceeded max retries connecting to Binance market data", e);
                         break;
                     }
-                    try {
-                        long backoff = baseBackoff * (1L << (attempt - 1));
-                        Thread.sleep(backoff);
-                    } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
-                        break;
-                    }
+                        try {
+                            long backoff = baseBackoff * (1L << (attempt - 1));
+                            // add jitter up to baseBackoff
+                            long jitter = (long) (Math.random() * baseBackoff);
+                            backoff += jitter;
+                            Thread.sleep(backoff);
+                        } catch (InterruptedException ie) {
+                            Thread.currentThread().interrupt();
+                            break;
+                        }
                 }
             }
         });
