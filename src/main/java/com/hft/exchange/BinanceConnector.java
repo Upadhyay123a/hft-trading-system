@@ -46,7 +46,7 @@ public class BinanceConnector {
 
     private static final Logger logger = LoggerFactory.getLogger(BinanceConnector.class);
 
-    private static final String BINANCE_WS_URL = "wss://stream.binance.com:9443/ws";
+    private static final String BINANCE_WS_URL = "wss://stream.binance.com:9443/stream?streams=";
 
     
 
