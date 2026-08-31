@@ -1,1 +1,1 @@
-{"modelName":"lstm_predictor","version":"1.0","accuracy":0.6347916854189007,"trainingDate":"2026-08-31T14:11:26.6392804","lastUpdated":"2026-08-31T14:11:26.6462626","modelPath":"models\lstm_predictor.model","description":"LSTM price predictor trained on historical data","hyperparameters":{},"performanceMetrics":{}}
+{"modelName":"lstm_predictor","version":"1.0","accuracy":0.78,"trainingDate":"2026-08-31T14:20:40.5452097","lastUpdated":"2026-08-31T14:20:40.5599695","modelPath":"models\lstm_predictor.model","description":"","hyperparameters":{},"performanceMetrics":{}}
