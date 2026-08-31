@@ -1,22 +1,23 @@
 package com.hft.ai;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.Map;
-import java.util.List;
-import java.util.ArrayList;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 
 /**
  * AI Market Intelligence Integration
@@ -210,12 +211,16 @@ public class AIMarketIntelligence {
             return generateMockGeminiResponse(prompt);
         }
         
-        URL url = new URL(GEMINI_API_URL + "?key=" + geminiApiKey);
+        URL url = new URL(GEMINI_API_URL);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("POST");
         conn.setRequestProperty("Content-Type", "application/json");
+        // Use Authorization header instead of query param to avoid leaking keys in logs/URLs
+        conn.setRequestProperty("Authorization", "Bearer " + geminiApiKey);
         conn.setDoOutput(true);
-        
+        conn.setConnectTimeout(5_000);
+        conn.setReadTimeout(15_000);
+
         // Build request body
         JsonObject requestBody = new JsonObject();
         JsonObject content = new JsonObject();
@@ -223,19 +228,21 @@ public class AIMarketIntelligence {
         part.addProperty("text", prompt);
         content.add("parts", new Gson().toJsonTree(new Object[]{part}));
         requestBody.add("contents", new Gson().toJsonTree(new Object[]{content}));
-        
-        // Send request
-        conn.getOutputStream().write(requestBody.toString().getBytes());
-        
-        // Read response
-        BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-        StringBuilder response = new StringBuilder();
-        String line;
-        while ((line = reader.readLine()) != null) {
-            response.append(line);
+
+        // Send request and read response using try-with-resources
+        try (java.io.OutputStream os = conn.getOutputStream()) {
+            os.write(requestBody.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            os.flush();
         }
-        reader.close();
-        
+
+        StringBuilder response = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream(), java.nio.charset.StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                response.append(line);
+            }
+        }
+
         return response.toString();
     }
     
@@ -254,24 +261,28 @@ public class AIMarketIntelligence {
         conn.setRequestProperty("Authorization", "Bearer " + perplexityApiKey);
         conn.setRequestProperty("Content-Type", "application/json");
         conn.setDoOutput(true);
-        
+        conn.setConnectTimeout(5_000);
+        conn.setReadTimeout(15_000);
+
         // Build request body
         JsonObject requestBody = new JsonObject();
         requestBody.addProperty("model", "llama-3.1-sonar-small-128k-online");
         requestBody.addProperty("messages", "[{\"role\": \"user\", \"content\": \"" + prompt + "\"}]");
-        
-        // Send request
-        conn.getOutputStream().write(requestBody.toString().getBytes());
-        
-        // Read response
-        BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-        StringBuilder response = new StringBuilder();
-        String line;
-        while ((line = reader.readLine()) != null) {
-            response.append(line);
+
+        // Send request and read response using try-with-resources
+        try (java.io.OutputStream os = conn.getOutputStream()) {
+            os.write(requestBody.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            os.flush();
         }
-        reader.close();
-        
+
+        StringBuilder response = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream(), java.nio.charset.StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                response.append(line);
+            }
+        }
+
         return response.toString();
     }
     
