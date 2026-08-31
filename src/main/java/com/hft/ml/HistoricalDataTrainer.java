@@ -196,12 +196,13 @@ public class HistoricalDataTrainer {
                     );
                     
                     for (List<Object> kline : klines) {
-                        long timestamp = ((Number) kline.get(0)).longValue();
-                        double open = ((Number) kline.get(1)).doubleValue();
-                        double high = ((Number) kline.get(2)).doubleValue();
-                        double low = ((Number) kline.get(3)).doubleValue();
-                        double close = ((Number) kline.get(4)).doubleValue();
-                        double volume = ((Number) kline.get(5)).doubleValue();
+                        // Kline elements may be Numbers or Strings depending on API; parse robustly
+                        long timestamp = parseLong(kline.get(0));
+                        double open = parseDouble(kline.get(1));
+                        double high = parseDouble(kline.get(2));
+                        double low = parseDouble(kline.get(3));
+                        double close = parseDouble(kline.get(4));
+                        double volume = parseDouble(kline.get(5));
                         
                         // Create synthetic tick data from candlestick
                         List<MarketTick> ticks = createSyntheticTicks(timestamp, open, high, low, close, volume);
@@ -228,6 +229,18 @@ public class HistoricalDataTrainer {
         } catch (Exception e) {
             logger.error("Error collecting from Binance for {}", symbol, e);
         }
+    }
+
+    private static long parseLong(Object o) {
+        if (o instanceof Number) return ((Number) o).longValue();
+        if (o instanceof String) return Long.parseLong(((String) o).trim());
+        throw new IllegalArgumentException("Cannot parse long from object: " + o);
+    }
+
+    private static double parseDouble(Object o) {
+        if (o instanceof Number) return ((Number) o).doubleValue();
+        if (o instanceof String) return Double.parseDouble(((String) o).trim());
+        throw new IllegalArgumentException("Cannot parse double from object: " + o);
     }
     
     /**
