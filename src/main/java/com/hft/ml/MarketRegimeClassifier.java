@@ -294,11 +294,12 @@ public class MarketRegimeClassifier {
      * Simple Decision Tree implementation for Random Forest
      * Optimized for speed with primitive types
      */
-    private static class DecisionTree {
+    private static class DecisionTree implements java.io.Serializable {
         private TreeNode root;
         private final int maxDepth;
         private final int minSamplesSplit;
         
+        private static final long serialVersionUID = 1L;
         public DecisionTree(int maxDepth, int minSamplesSplit) {
             this.maxDepth = maxDepth;
             this.minSamplesSplit = minSamplesSplit;
@@ -478,13 +479,14 @@ public class MarketRegimeClassifier {
     /**
      * Tree node for decision tree
      */
-    private static class TreeNode {
+    private static class TreeNode implements java.io.Serializable {
         private final int featureIndex;
         private final double threshold;
         private final TreeNode leftChild;
         private final TreeNode rightChild;
         private final MarketRegime regime; // For leaf nodes
         
+        private static final long serialVersionUID = 1L;
         public TreeNode(MarketRegime regime) {
             this.featureIndex = -1;
             this.threshold = 0.0;
