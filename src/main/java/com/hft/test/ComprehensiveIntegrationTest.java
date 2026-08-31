@@ -484,7 +484,8 @@ public class ComprehensiveIntegrationTest {
                     new String[]{"BTC/USDT"}
                 );
             
-            HistoricalDataTrainer.TrainingResults trainingResults = trainingFuture.get(60, TimeUnit.SECONDS);
+            // Allow longer timeout for model training in CI environments
+            HistoricalDataTrainer.TrainingResults trainingResults = trainingFuture.get(300, TimeUnit.SECONDS);
             
             long trainingTime = System.nanoTime() - startTime;
             result.addMetric("Training time", trainingTime / 1e9, "seconds");

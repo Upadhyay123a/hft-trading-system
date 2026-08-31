@@ -1,14 +1,5 @@
 package com.hft.ml;
 
-import com.hft.core.Tick;
-import com.hft.core.Trade;
-import com.hft.exchange.api.MultiExchangeManager;
-import com.hft.ml.MarketRegimeClassifier.MarketRegime;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -16,6 +7,13 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.hft.core.Tick;
+import com.hft.exchange.api.MultiExchangeManager;
+import com.hft.ml.MarketRegimeClassifier.MarketRegime;
 
 /**
  * Real-Time ML Processor for HFT Trading
@@ -57,9 +55,9 @@ public class RealTimeMLProcessor {
     private final AtomicLong totalLatency;
     private final AtomicReference<MLPerformanceStats> performanceStats;
     
-    // Thread pools for parallel processing
-    private final ExecutorService processingExecutor;
-    private final ScheduledExecutorService monitoringExecutor;
+    // Thread pools for parallel processing (recreatable for start/stop cycles)
+    private ExecutorService processingExecutor;
+    private ScheduledExecutorService monitoringExecutor;
     
     // Exchange manager for real data
     private final MultiExchangeManager exchangeManager;
@@ -93,8 +91,7 @@ public class RealTimeMLProcessor {
         this.performanceStats = new AtomicReference<>(new MLPerformanceStats());
         
         // Initialize thread pools
-        this.processingExecutor = Executors.newFixedThreadPool(4); // Feature computation, inference, RL, output
-        this.monitoringExecutor = Executors.newScheduledThreadPool(1);
+        initExecutors();
         
         // Initialize state
         this.isRunning = false;
@@ -107,6 +104,27 @@ public class RealTimeMLProcessor {
         
         logger.info("Real-Time ML Processor initialized");
     }
+
+    /**
+     * Initialize or recreate executors.
+     */
+    private synchronized void initExecutors() {
+        // Shutdown existing if present
+        try {
+            if (processingExecutor != null && !processingExecutor.isShutdown()) {
+                processingExecutor.shutdownNow();
+            }
+        } catch (Exception ignored) {}
+
+        try {
+            if (monitoringExecutor != null && !monitoringExecutor.isShutdown()) {
+                monitoringExecutor.shutdownNow();
+            }
+        } catch (Exception ignored) {}
+
+        this.processingExecutor = Executors.newFixedThreadPool(4); // Feature computation, inference, RL, output
+        this.monitoringExecutor = Executors.newScheduledThreadPool(1);
+    }
     
     /**
      * Start real-time processing
@@ -116,21 +134,37 @@ public class RealTimeMLProcessor {
             logger.warn("ML Processor is already running");
             return;
         }
-        
+
+        // Ensure executors are available (recreate after stop)
+        if (processingExecutor == null || processingExecutor.isShutdown() || processingExecutor.isTerminated() ||
+            monitoringExecutor == null || monitoringExecutor.isShutdown() || monitoringExecutor.isTerminated()) {
+            initExecutors();
+        }
+
         isRunning = true;
-        
-        // Start processing threads
-        processingExecutor.submit(this::processTicks);
-        processingExecutor.submit(this::computeFeatures);
-        processingExecutor.submit(this::runInference);
-        processingExecutor.submit(this::handlePredictions);
-        
+
+        // Start processing threads (defensive: handle rejected execution)
+        try {
+            processingExecutor.submit(this::processTicks);
+            processingExecutor.submit(this::computeFeatures);
+            processingExecutor.submit(this::runInference);
+            processingExecutor.submit(this::handlePredictions);
+        } catch (java.util.concurrent.RejectedExecutionException rex) {
+            logger.error("Failed to submit ML processing tasks: {}", rex.getMessage());
+            // Try to recreate executors and resubmit once
+            initExecutors();
+            processingExecutor.submit(this::processTicks);
+            processingExecutor.submit(this::computeFeatures);
+            processingExecutor.submit(this::runInference);
+            processingExecutor.submit(this::handlePredictions);
+        }
+
         // Start monitoring
         monitoringExecutor.scheduleAtFixedRate(this::monitorPerformance, 0, 5, TimeUnit.SECONDS);
-        
+
         // Connect to exchange data feeds
         connectToExchanges();
-        
+
         logger.info("Real-Time ML Processor started");
     }
     
@@ -141,8 +175,8 @@ public class RealTimeMLProcessor {
         isRunning = false;
         
         // Shutdown thread pools
-        processingExecutor.shutdown();
-        monitoringExecutor.shutdown();
+        if (processingExecutor != null) processingExecutor.shutdown();
+        if (monitoringExecutor != null) monitoringExecutor.shutdown();
         
         try {
             if (!processingExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
@@ -160,6 +194,10 @@ public class RealTimeMLProcessor {
         // Save current models
         saveCurrentModels();
         
+        // Null out executors so start() can recreate them
+        processingExecutor = null;
+        monitoringExecutor = null;
+
         logger.info("Real-Time ML Processor stopped");
     }
     
@@ -501,7 +539,11 @@ public class RealTimeMLProcessor {
         logger.info("Connecting to exchange data feeds...");
         
         // Start mock data feed for testing
-        processingExecutor.submit(this::generateMockData);
+        try {
+            processingExecutor.submit(this::generateMockData);
+        } catch (java.util.concurrent.RejectedExecutionException rex) {
+            logger.warn("Could not start mock data generator (executor may be shutting down): {}", rex.getMessage());
+        }
     }
     
     /**
