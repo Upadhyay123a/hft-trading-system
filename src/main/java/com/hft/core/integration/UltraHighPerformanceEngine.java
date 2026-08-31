@@ -7,7 +7,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-// FIX: corrected package — was com.ft.risk.RiskManager (missing 'h' in 'hft')
 import com.ft.risk.RiskManager;
 import com.hft.core.Order;
 import com.hft.core.aeron.AeronMarketDataFeed;
@@ -130,6 +129,14 @@ public class UltraHighPerformanceEngine {
         
         // Stop components in reverse order
         try {
+            // Allow strategy to clean up any resources (e.g., AI scheduler threads)
+            try {
+                if (strategy != null) {
+                    strategy.shutdown();
+                }
+            } catch (Exception e) {
+                logger.warn("Exception while shutting down strategy: {}", e.getMessage());
+            }
             if (webSocketServer != null) {
                 webSocketServer.stop();
             }

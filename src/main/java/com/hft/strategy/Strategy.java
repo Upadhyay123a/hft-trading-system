@@ -1,11 +1,11 @@
 package com.hft.strategy;
 
+import java.util.List;
+
 import com.hft.core.Order;
 import com.hft.core.Tick;
 import com.hft.core.Trade;
 import com.hft.orderbook.OrderBook;
-
-import java.util.List;
 
 /**
  * Base interface for trading strategies
@@ -42,4 +42,10 @@ public interface Strategy {
      * Reset strategy state
      */
     void reset();
+
+    /**
+     * Optional lifecycle shutdown hook for strategies to clean up resources (executors, external clients).
+     * Default no-op to avoid forcing all implementations to change.
+     */
+    default void shutdown() {}
 }
