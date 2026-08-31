@@ -1,28 +1,45 @@
 package com.hft.test;
 
-import com.hft.core.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.ft.risk.RiskManager;
+import com.hft.core.Order;
+import com.hft.core.Tick;
+import com.hft.core.Trade;
 import com.hft.core.aeron.AeronMarketDataFeed;
 import com.hft.core.disruptor.DisruptorEngine;
 import com.hft.core.fix.FixProtocolHandler;
 import com.hft.core.integration.UltraHighPerformanceEngine;
-import com.hft.core.integration.WebSocketApiServer;
 import com.hft.exchange.api.BinanceRealApi;
 import com.hft.exchange.api.CoinbaseRealApi;
 import com.hft.exchange.api.MultiExchangeManager;
 import com.hft.execution.AdvancedOrderTypes;
-import com.hft.ml.*;
+import com.hft.ml.HistoricalDataTrainer;
+import com.hft.ml.MLAcceleration;
+import com.hft.ml.MLModelPersistence;
+import com.hft.ml.RealTimeMLProcessor;
 import com.hft.monitoring.PerformanceMonitor;
 import com.hft.orderbook.OptimizedOrderBook;
 import com.hft.portfolio.MultiAssetPortfolioOptimizer;
-import com.hft.strategy.*;
-import com.ft.risk.RiskManager;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
+import com.hft.strategy.MLEnhancedMarketMakingStrategy;
+import com.hft.strategy.MarketMakingStrategy;
+import com.hft.strategy.MomentumStrategy;
+import com.hft.strategy.StatisticalArbitrageStrategy;
+import com.hft.strategy.Strategy;
+import com.hft.strategy.TriangularArbitrageStrategy;
 
 /**
  * Comprehensive Integration Test Suite
@@ -1209,6 +1226,7 @@ public class ComprehensiveIntegrationTest {
         boolean success = false;
         String errorMessage;
         Map<String, Object> metrics = new HashMap<>();
+        Map<String, String> metricUnits = new HashMap<>();
         List<String> errors = new ArrayList<>();
         
         TestResult(String testName) {
@@ -1224,11 +1242,17 @@ public class ComprehensiveIntegrationTest {
         }
         
         void addMetric(String name, Object value, String unit) {
-            this.metrics.put(name, value + " " + unit);
+            // Store raw value and unit separately to preserve numeric types
+            this.metrics.put(name, value);
+            this.metricUnits.put(name, unit);
         }
         
         Object getMetric(String name) {
             return metrics.get(name);
+        }
+
+        String getMetricUnit(String name) {
+            return metricUnits.get(name);
         }
         
         static TestResult failure(String testName, Exception e) {
