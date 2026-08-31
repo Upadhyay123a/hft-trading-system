@@ -768,7 +768,7 @@ public class ComprehensiveIntegrationTest {
             logger.info("   - Initial value: ${:.2f}", result.getMetric("Initial portfolio value"));
             logger.info("   - Final value: ${:.2f}", result.getMetric("Final portfolio value"));
             logger.info("   - Portfolio PnL: ${:.2f}", result.getMetric("Portfolio PnL"));
-            logger.info("   - Volatility: {:.2f}%", (Double) result.getMetric("Portfolio volatility") * 100);
+            logger.info("   - Volatility: {:.2f}%", result.getMetricAsDouble("Portfolio volatility") * 100);
             logger.info("   - Optimization time: {:.1f} seconds", result.getMetric("Optimization time"));
             
         } catch (Exception e) {
@@ -1254,6 +1254,31 @@ public class ComprehensiveIntegrationTest {
 
         String getMetricUnit(String name) {
             return metricUnits.get(name);
+        }
+
+        /**
+         * Return metric as a Number when possible. If the stored value is not a Number,
+         * try to parse it as a double from its string representation. Returns null
+         * when parsing is not possible.
+         */
+        Number getMetricAsNumber(String name) {
+            Object v = metrics.get(name);
+            if (v == null) return null;
+            if (v instanceof Number) return (Number) v;
+            try {
+                return Double.parseDouble(String.valueOf(v));
+            } catch (Exception e) {
+                return null;
+            }
+        }
+
+        /**
+         * Convenient double accessor. Returns Double.NaN when metric is missing or
+         * not parseable as a number.
+         */
+        double getMetricAsDouble(String name) {
+            Number n = getMetricAsNumber(name);
+            return (n == null) ? Double.NaN : n.doubleValue();
         }
         
         static TestResult failure(String testName, Exception e) {

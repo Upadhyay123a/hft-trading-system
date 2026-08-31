@@ -205,6 +205,13 @@ public class HistoricalDataTrainer {
                     
                     for (List<Object> kline : klines) {
                         // Kline elements may be Numbers or Strings depending on API; parse robustly
+                        if (kline == null || kline.size() < 6
+                            || kline.get(0) == null || kline.get(1) == null || kline.get(2) == null
+                            || kline.get(3) == null || kline.get(4) == null || kline.get(5) == null) {
+                            logger.warn("Skipping malformed kline entry for {}: {}", symbol, kline);
+                            continue;
+                        }
+
                         long timestamp = parseLong(kline.get(0));
                         double open = parseDouble(kline.get(1));
                         double high = parseDouble(kline.get(2));
@@ -683,30 +690,45 @@ public class HistoricalDataTrainer {
         try {
             // Save regime classifier (only if present)
             if (results.getModelResults().containsKey("regime_classifier") && results.getModelResults().get("regime_classifier") != null) {
-                MLModelPersistence.ModelMetadata regimeMetadata = new MLModelPersistence.ModelMetadata("regime_classifier", "1.0");
-                regimeMetadata.accuracy = results.getModelResults().get("regime_classifier").accuracy;
-                regimeMetadata.description = "Market regime classifier trained on historical data";
-                modelPersistence.saveModel("regime_classifier", regimeClassifier.getModel(), regimeMetadata);
+                Object regimeModel = regimeClassifier.getModel();
+                if (regimeModel != null) {
+                    MLModelPersistence.ModelMetadata regimeMetadata = new MLModelPersistence.ModelMetadata("regime_classifier", "1.0");
+                    regimeMetadata.accuracy = results.getModelResults().get("regime_classifier").accuracy;
+                    regimeMetadata.description = "Market regime classifier trained on historical data";
+                    modelPersistence.saveModel("regime_classifier", regimeModel, regimeMetadata);
+                } else {
+                    logger.warn("Regime classifier model object is null, skipping save");
+                }
             } else {
                 logger.warn("No regime_classifier result available to save");
             }
             
             // Save LSTM predictor
             if (results.getModelResults().containsKey("lstm_predictor") && results.getModelResults().get("lstm_predictor") != null) {
-                MLModelPersistence.ModelMetadata lstmMetadata = new MLModelPersistence.ModelMetadata("lstm_predictor", "1.0");
-                lstmMetadata.accuracy = results.getModelResults().get("lstm_predictor").accuracy;
-                lstmMetadata.description = "LSTM price predictor trained on historical data";
-                modelPersistence.saveModel("lstm_predictor", lstmPredictor.getModel(), lstmMetadata);
+                Object lstmModel = lstmPredictor.getModel();
+                if (lstmModel != null) {
+                    MLModelPersistence.ModelMetadata lstmMetadata = new MLModelPersistence.ModelMetadata("lstm_predictor", "1.0");
+                    lstmMetadata.accuracy = results.getModelResults().get("lstm_predictor").accuracy;
+                    lstmMetadata.description = "LSTM price predictor trained on historical data";
+                    modelPersistence.saveModel("lstm_predictor", lstmModel, lstmMetadata);
+                } else {
+                    logger.warn("LSTM predictor model object is null, skipping save");
+                }
             } else {
                 logger.warn("No lstm_predictor result available to save");
             }
             
             // Save RL agent
             if (results.getModelResults().containsKey("rl_agent") && results.getModelResults().get("rl_agent") != null) {
-                MLModelPersistence.ModelMetadata rlMetadata = new MLModelPersistence.ModelMetadata("rl_agent", "1.0");
-                rlMetadata.accuracy = results.getModelResults().get("rl_agent").accuracy;
-                rlMetadata.description = "Reinforcement learning agent trained on historical data";
-                modelPersistence.saveModel("rl_agent", rlAgent.getModel(), rlMetadata);
+                Object rlModel = rlAgent.getModel();
+                if (rlModel != null) {
+                    MLModelPersistence.ModelMetadata rlMetadata = new MLModelPersistence.ModelMetadata("rl_agent", "1.0");
+                    rlMetadata.accuracy = results.getModelResults().get("rl_agent").accuracy;
+                    rlMetadata.description = "Reinforcement learning agent trained on historical data";
+                    modelPersistence.saveModel("rl_agent", rlModel, rlMetadata);
+                } else {
+                    logger.warn("RL agent model object is null, skipping save");
+                }
             } else {
                 logger.warn("No rl_agent result available to save");
             }
