@@ -320,15 +320,18 @@ public class BinanceConnector {
 
             client.close();
 
-        }
+                    // Build stream URI for multiple symbols using /stream?streams=
+                    StringBuilder streams = new StringBuilder();
+                    for (int i = 0; i < symbols.size(); i++) {
+                        if (i > 0) streams.append("/");
+                        streams.append(symbols.get(i).toLowerCase()).append("@trade");
+                    }
 
-        connected = false;
+                    // Convert base /ws endpoint to /stream?streams= to support multiple streams
+                    String streamUrl = BINANCE_WS_URL.replace("/ws", "/stream?streams=") + streams.toString();
+                    logger.info("Connecting to Binance: {}", streamUrl);
 
-    }
-
-    
-
-    /**
+                    client = new WebSocketClient(new URI(streamUrl)) {
 
      * Get queue size
 
