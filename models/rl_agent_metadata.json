@@ -1,1 +1,1 @@
-{"modelName":"rl_agent","version":"1.0","accuracy":0.72,"trainingDate":"2026-08-31T13:12:27.5448094","lastUpdated":"2026-08-31T13:12:27.5497989","modelPath":"models\rl_agent.model","description":"","hyperparameters":{},"performanceMetrics":{}}
+{"modelName":"rl_agent","version":"1.0","accuracy":0.5997341265735234,"trainingDate":"2026-08-31T13:24:36.5794857","lastUpdated":"2026-08-31T13:24:36.5804916","modelPath":"models\rl_agent.model","description":"Reinforcement learning agent trained on historical data","hyperparameters":{},"performanceMetrics":{}}
