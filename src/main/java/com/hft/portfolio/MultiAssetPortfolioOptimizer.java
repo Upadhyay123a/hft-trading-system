@@ -189,9 +189,14 @@ public class MultiAssetPortfolioOptimizer {
                 if (indicators.hasEnoughData(50)) {
                     double[] allIndicators = indicators.getAllIndicators();
                     
-                    // Update regime classifier
+                    // Update regime classifier (guard if classifier not trained)
                     MarketRegimeClassifier regimeClassifier = regimeClassifiers.get(asset);
-                    MarketRegimeClassifier.MarketRegime regime = regimeClassifier.predict(allIndicators);
+                    MarketRegimeClassifier.MarketRegime regime = MarketRegimeClassifier.MarketRegime.RANGING;
+                    if (regimeClassifier != null && regimeClassifier.isTrained()) {
+                        regime = regimeClassifier.predict(allIndicators);
+                    } else {
+                        logger.debug("Regime classifier for {} not trained yet; defaulting to RANGING", asset);
+                    }
                     assetData.currentRegime = regime;
                     
                     // Update price predictor
