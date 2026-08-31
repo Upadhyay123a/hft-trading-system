@@ -1,7 +1,7 @@
 package com.hft;
 
-import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
 
 /**
  * Lightweight placeholder integration test.
