@@ -67,6 +67,10 @@ public class MultiAssetPortfolioOptimizer {
     
     // Thread pool for optimization
     private final ScheduledExecutorService optimizer;
+    // Scheduler to delay optimizer start until ML models are available
+    private final ScheduledExecutorService startupScheduler;
+    private final long startupTimeoutMillis = 30_000; // 30s
+    private final long startupStartTime;
     
     // ML processor for market analysis
     private final RealTimeMLProcessor mlProcessor;
@@ -97,12 +101,14 @@ public class MultiAssetPortfolioOptimizer {
         this.performanceHistory = new ArrayList<>();
         
         this.optimizer = Executors.newScheduledThreadPool(4);
-        
+        this.startupScheduler = Executors.newSingleThreadScheduledExecutor();
+        this.startupStartTime = System.currentTimeMillis();
+
         // Initialize components for each asset
         initializeAssets();
-        
-        // Start optimization
-        startOptimization();
+
+        // Delay starting optimization until ML models are ready (or timeout)
+        startupScheduler.scheduleAtFixedRate(this::checkAndStart, 0, 1, TimeUnit.SECONDS);
         
         logger.info("Multi-Asset Portfolio Optimizer initialized for {} assets", assets.size());
     }
@@ -795,6 +801,13 @@ public class MultiAssetPortfolioOptimizer {
      * Shutdown
      */
     public void shutdown() {
+        // Stop startup scheduler if still running
+        try {
+            if (startupScheduler != null) {
+                startupScheduler.shutdownNow();
+            }
+        } catch (Exception ignored) {}
+
         optimizer.shutdown();
         
         try {
@@ -807,5 +820,35 @@ public class MultiAssetPortfolioOptimizer {
         }
         
         logger.info("Multi-Asset Portfolio Optimizer shutdown complete");
+    }
+
+    /**
+     * Check ML readiness and start optimizer when ready or after timeout
+     */
+    private void checkAndStart() {
+        try {
+            boolean allTrained = true;
+            for (String asset : assets) {
+                MarketRegimeClassifier clf = regimeClassifiers.get(asset);
+                if (clf == null || !clf.isTrained()) {
+                    allTrained = false;
+                    break;
+                }
+            }
+
+            long elapsed = System.currentTimeMillis() - startupStartTime;
+            if (allTrained || elapsed >= startupTimeoutMillis) {
+                // Start optimization and stop the startup scheduler
+                startOptimization();
+                try {
+                    startupScheduler.shutdownNow();
+                } catch (Exception ignored) {}
+                logger.info("Startup gating complete: allTrained={} elapsedMs={}", allTrained, elapsed);
+            } else {
+                logger.debug("Waiting for ML models to be trained... elapsedMs={}", elapsed);
+            }
+        } catch (Exception e) {
+            logger.error("Error during startup gating", e);
+        }
     }
 }
