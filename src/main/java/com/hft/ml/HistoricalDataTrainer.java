@@ -1,20 +1,28 @@
 package com.hft.ml;
 
-import com.hft.exchange.api.BinanceRealApi;
-import com.hft.exchange.api.CoinbaseRealApi;
-import com.hft.exchange.api.MultiExchangeManager;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.time.*;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicLong;
+import com.hft.exchange.api.BinanceRealApi;
+import com.hft.exchange.api.CoinbaseRealApi;
+import com.hft.exchange.api.MultiExchangeManager;
 
 /**
  * Historical Data Trainer for ML Models
@@ -673,23 +681,35 @@ public class HistoricalDataTrainer {
         logger.info("Saving trained models");
         
         try {
-            // Save regime classifier
-            MLModelPersistence.ModelMetadata regimeMetadata = new MLModelPersistence.ModelMetadata("regime_classifier", "1.0");
-            regimeMetadata.accuracy = results.getModelResults().get("regime_classifier").accuracy;
-            regimeMetadata.description = "Market regime classifier trained on historical data";
-            modelPersistence.saveModel("regime_classifier", regimeClassifier.getModel(), regimeMetadata);
+            // Save regime classifier (only if present)
+            if (results.getModelResults().containsKey("regime_classifier") && results.getModelResults().get("regime_classifier") != null) {
+                MLModelPersistence.ModelMetadata regimeMetadata = new MLModelPersistence.ModelMetadata("regime_classifier", "1.0");
+                regimeMetadata.accuracy = results.getModelResults().get("regime_classifier").accuracy;
+                regimeMetadata.description = "Market regime classifier trained on historical data";
+                modelPersistence.saveModel("regime_classifier", regimeClassifier.getModel(), regimeMetadata);
+            } else {
+                logger.warn("No regime_classifier result available to save");
+            }
             
             // Save LSTM predictor
-            MLModelPersistence.ModelMetadata lstmMetadata = new MLModelPersistence.ModelMetadata("lstm_predictor", "1.0");
-            lstmMetadata.accuracy = results.getModelResults().get("lstm_predictor").accuracy;
-            lstmMetadata.description = "LSTM price predictor trained on historical data";
-            modelPersistence.saveModel("lstm_predictor", lstmPredictor.getModel(), lstmMetadata);
+            if (results.getModelResults().containsKey("lstm_predictor") && results.getModelResults().get("lstm_predictor") != null) {
+                MLModelPersistence.ModelMetadata lstmMetadata = new MLModelPersistence.ModelMetadata("lstm_predictor", "1.0");
+                lstmMetadata.accuracy = results.getModelResults().get("lstm_predictor").accuracy;
+                lstmMetadata.description = "LSTM price predictor trained on historical data";
+                modelPersistence.saveModel("lstm_predictor", lstmPredictor.getModel(), lstmMetadata);
+            } else {
+                logger.warn("No lstm_predictor result available to save");
+            }
             
             // Save RL agent
-            MLModelPersistence.ModelMetadata rlMetadata = new MLModelPersistence.ModelMetadata("rl_agent", "1.0");
-            rlMetadata.accuracy = results.getModelResults().get("rl_agent").accuracy;
-            rlMetadata.description = "Reinforcement learning agent trained on historical data";
-            modelPersistence.saveModel("rl_agent", rlAgent.getModel(), rlMetadata);
+            if (results.getModelResults().containsKey("rl_agent") && results.getModelResults().get("rl_agent") != null) {
+                MLModelPersistence.ModelMetadata rlMetadata = new MLModelPersistence.ModelMetadata("rl_agent", "1.0");
+                rlMetadata.accuracy = results.getModelResults().get("rl_agent").accuracy;
+                rlMetadata.description = "Reinforcement learning agent trained on historical data";
+                modelPersistence.saveModel("rl_agent", rlAgent.getModel(), rlMetadata);
+            } else {
+                logger.warn("No rl_agent result available to save");
+            }
             
             logger.info("All models saved successfully");
             
