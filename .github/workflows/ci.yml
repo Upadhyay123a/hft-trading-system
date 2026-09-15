@@ -52,6 +52,13 @@ jobs:
           distribution: temurin
           java-version: 17
           cache: maven
+      - name: Restore OWASP Dependency-Check cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository/dependency-check-data
+          key: dependency-check-data-${{ runner.os }}-${{ hashFiles('pom.xml') }}
+          restore-keys: |
+            dependency-check-data-${{ runner.os }}-
       - name: Run OWASP Dependency-Check
         env:
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
@@ -60,9 +67,11 @@ jobs:
             echo "NVD_API_KEY is not configured; skipping dependency-check to avoid hanging on external NVD sync."
             exit 0
           fi
-          echo "Running dependency-check (NVD feed via secret)"
+          echo "Running dependency-check (reusing cached NVD database when fresh)"
           mvn -B org.owasp:dependency-check-maven:check \
+            -DdataDirectory="${HOME}/.m2/repository/dependency-check-data" \
             -Dnvd.api.key="${NVD_API_KEY}" \
+            -Dnvd.validForHours=24 \
             -Dformat=ALL \
             -DfailBuildOnCVSS=9 \
             -Dnvd.maxRetryCount=3 \
