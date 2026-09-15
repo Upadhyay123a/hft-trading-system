@@ -121,6 +121,13 @@
             <version>3.24.2</version>
             <scope>test</scope>
         </dependency>
+        
+        <!-- Override transitive vulnerable library (Mina) with patched stable release -->
+        <dependency>
+            <groupId>org.apache.mina</groupId>
+            <artifactId>mina-core</artifactId>
+            <version>2.2.9</version>
+        </dependency>
     </dependencies>
 
     <build>
