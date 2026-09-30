@@ -5,6 +5,7 @@ import com.hft.core.Tick;
 import com.hft.core.integration.UltraHighPerformanceEngine;
 import com.hft.exchange.BinanceConnector;
 import com.hft.ui.TradingDashboard;
+import com.hft.ui.WebTradingDashboardServer;
 import com.ft.risk.RiskManager;
 import com.hft.strategy.MarketMakingStrategy;
 import com.hft.strategy.MomentumStrategy;
@@ -49,6 +50,29 @@ public class Main {
                 dashboard.setVisible(true);
             });
             return;
+        }
+
+        if (args.length > 0 && ("--web".equalsIgnoreCase(args[0]) || "--browser".equalsIgnoreCase(args[0]) || "--frontend".equalsIgnoreCase(args[0]))) {
+            logger.info("Launching browser-based trading dashboard");
+            try {
+                WebTradingDashboardServer server = new WebTradingDashboardServer(8080);
+                server.start();
+                logger.info("Browser dashboard available at http://localhost:8080/");
+                CountDownLatch latch = new CountDownLatch(1);
+                Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                    server.stop();
+                    latch.countDown();
+                }));
+                try {
+                    latch.await();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                return;
+            } catch (Exception e) {
+                logger.error("Unable to launch browser dashboard", e);
+                return;
+            }
         }
 
         logger.info("=== HFT Trading System ===");

@@ -121,12 +121,13 @@ async function loadDashboard() {
         const payload = await response.json();
         renderMarket(payload);
         renderStrategy(payload);
+        drawChart(payload.history || payload.chart || chartValues);
         renderActivity([
+            `Feed: ${payload.source || 'live market feed'}`,
             `Order: BUY 0.25 BTC @ ${payload.market[0]?.price ?? 68342.15}`,
             'Risk: Position within limits',
             'Strategy: Market Making rebalanced'
         ]);
-        drawChart(chartValues);
     } catch (error) {
         renderMarket(defaultData);
         renderStrategy(defaultData);
