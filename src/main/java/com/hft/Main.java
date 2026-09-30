@@ -4,6 +4,7 @@ import com.hft.core.SymbolMapper;
 import com.hft.core.Tick;
 import com.hft.core.integration.UltraHighPerformanceEngine;
 import com.hft.exchange.BinanceConnector;
+import com.hft.ui.TradingDashboard;
 import com.ft.risk.RiskManager;
 import com.hft.strategy.MarketMakingStrategy;
 import com.hft.strategy.MomentumStrategy;
@@ -41,6 +42,15 @@ public class Main {
     private static volatile Thread dataThread;
 
     public static void main(String[] args) {
+        if (args.length > 0 && ("--ui".equalsIgnoreCase(args[0]) || "--dashboard".equalsIgnoreCase(args[0]))) {
+            logger.info("Launching trading dashboard UI");
+            javax.swing.SwingUtilities.invokeLater(() -> {
+                TradingDashboard dashboard = new TradingDashboard();
+                dashboard.setVisible(true);
+            });
+            return;
+        }
+
         logger.info("=== HFT Trading System ===");
         logger.info("Starting up...");
 
