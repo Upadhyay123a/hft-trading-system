@@ -1,1 +1,1 @@
-{"modelName":"rl_agent","version":"1.0","accuracy":0.72,"trainingDate":"2026-09-30T16:49:39.3832623","lastUpdated":"2026-09-30T16:49:39.3905437","modelPath":"models\rl_agent.model","description":"","hyperparameters":{},"performanceMetrics":{}}
+{"modelName":"rl_agent","version":"1.0","accuracy":0.72,"trainingDate":"2026-09-30T16:57:34.2292129","lastUpdated":"2026-09-30T16:57:34.2385721","modelPath":"models\rl_agent.model","description":"","hyperparameters":{},"performanceMetrics":{}}

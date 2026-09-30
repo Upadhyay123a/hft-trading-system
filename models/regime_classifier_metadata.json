@@ -1,1 +1,1 @@
-{"modelName":"regime_classifier","version":"1.0","accuracy":0.85,"trainingDate":"2026-09-30T16:49:39.3349284","lastUpdated":"2026-09-30T16:49:39.3495596","modelPath":"models\regime_classifier.model","description":"","hyperparameters":{},"performanceMetrics":{}}
+{"modelName":"regime_classifier","version":"1.0","accuracy":0.85,"trainingDate":"2026-09-30T16:57:34.204206","lastUpdated":"2026-09-30T16:57:34.2126105","modelPath":"models\regime_classifier.model","description":"","hyperparameters":{},"performanceMetrics":{}}

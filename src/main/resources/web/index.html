@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HFT Trading Console</title>
+    <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<div class="app-shell">
+    <header class="topbar">
+        <div>
+            <div class="eyebrow">Institutional Execution</div>
+            <h1>HFT Trading Console</h1>
+        </div>
+        <div class="status-pill">
+            <span class="dot"></span>
+            <span>LIVE</span>
+        </div>
+    </header>
+
+    <main class="dashboard-grid">
+        <section class="panel overview-panel">
+            <div class="panel-header">
+                <h2>Portfolio Overview</h2>
+            </div>
+            <div class="portfolio-metric">
+                <div class="metric-title">BTCUSDT</div>
+                <div class="metric-value" id="portfolioValue">$68,342.15</div>
+                <div class="metric-sub" id="portfolioSummary">PnL: $6,400.75 | Daily: +2.35%</div>
+            </div>
+            <div class="chart-wrap">
+                <div class="chart-legend">
+                    <span>Trend: <strong id="trendStatus">Bullish</strong></span>
+                </div>
+                <canvas id="priceChart" width="820" height="220"></canvas>
+            </div>
+        </section>
+
+        <section class="panel strategy-panel">
+            <div class="panel-header">
+                <h2>Strategies</h2>
+            </div>
+            <ul id="strategyList" class="strategy-list"></ul>
+            <div class="panel-header metrics-header">
+                <h3>Strategy Metrics</h3>
+            </div>
+            <div id="strategyMetrics" class="metric-grid"></div>
+        </section>
+
+        <section class="panel market-panel">
+            <div class="panel-header">
+                <h2>Market Data</h2>
+            </div>
+            <table id="marketTable">
+                <thead>
+                <tr>
+                    <th>Symbol</th>
+                    <th>Price</th>
+                    <th>Change %</th>
+                    <th>Volume</th>
+                </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </section>
+
+        <section class="panel order-panel">
+            <div class="panel-header">
+                <h2>Order Ticket</h2>
+            </div>
+            <form id="orderForm">
+                <label>
+                    <span>Symbol</span>
+                    <input id="symbolInput" type="text" value="BTCUSDT" />
+                </label>
+                <label>
+                    <span>Side</span>
+                    <select id="sideInput">
+                        <option>BUY</option>
+                        <option>SELL</option>
+                    </select>
+                </label>
+                <label>
+                    <span>Quantity</span>
+                    <input id="quantityInput" type="number" min="0.000001" step="0.000001" value="1" />
+                </label>
+                <button type="submit">Place Order</button>
+            </form>
+            <div id="orderMessage" class="message success">Ready to place order</div>
+            <div class="panel-header risk-header">
+                <h3>Risk</h3>
+            </div>
+            <div id="riskStatus" class="risk-block">Risk: OK</div>
+        </section>
+
+        <section class="panel activity-panel">
+            <div class="panel-header">
+                <h2>Activity</h2>
+            </div>
+            <ul id="activityFeed" class="activity-feed"></ul>
+        </section>
+    </main>
+</div>
+<script src="/app.js"></script>
+</body>
+</html>

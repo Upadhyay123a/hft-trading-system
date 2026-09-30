@@ -1,10 +1,9 @@
 package com.hft.ui;
 
-import org.junit.jupiter.api.Test;
-
-import javax.swing.*;
+import javax.swing.JPanel;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 class TradingDashboardComponentTest {
 
